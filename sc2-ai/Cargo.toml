@@ -1,0 +1,18 @@
+[package]
+name = "sc2-ai"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.97"
+bevy_ecs = "0.15.3"
+dirs = "6.0.0"
+num-traits = "0.2.19"
+protobuf = { version = "3.7.2", features = ["bytes"] }
+regex = "1.11.1"
+rust-sc2 = "1.1.2"
+sc2-proto = { path = "../sc2-proto" }
+thiserror = "2.0.12"
+tracing = "0.1.41"
+tracing-subscriber = "0.3.19"
+tungstenite = "0.26.2"

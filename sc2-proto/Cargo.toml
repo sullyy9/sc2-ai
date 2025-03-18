@@ -1,0 +1,14 @@
+[package]
+name = "sc2-proto"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bytes = "1.10.1"
+num-derive = "0.4.2"
+num-traits = "0.2.19"
+protobuf = { version = "3.7.2", features = ["with-bytes"] }
+
+[build-dependencies]
+anyhow = "1.0.97"
+protobuf-codegen = "3.7.2"
