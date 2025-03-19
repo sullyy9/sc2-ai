@@ -14,6 +14,8 @@
             "command": "cargo",
             "args": [
                 "run",
+                "--",
+                "--map", "sc2-ai-cup-2022"
             ]
         }
     ]

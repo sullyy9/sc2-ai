@@ -1,6 +1,12 @@
 use bevy_ecs::{
-    event::{EventWriter, Events}, query::With, schedule::{Schedule, ScheduleLabel}, system::{Commands, Query, Res}, world::World
+    event::{EventWriter, Events},
+    query::With,
+    schedule::{Schedule, ScheduleLabel},
+    system::{Commands, Query, Res},
+    world::World,
 };
+use clap::Parser;
+use client::Client;
 use num_traits::FromPrimitive as _;
 use protobuf::MessageField;
 use sc2_proto::{
@@ -14,9 +20,14 @@ mod game;
 mod process;
 
 use game::{
-    action::MoveEvent, entity::{
-        self, building::{HatcheryBundle, LarvaBundle}, map::{DestructibleRockBundle, MineralPatchBundle, VespeneGeyserBundle}, unit::{OverlordBundle, Worker, WorkerBundle}, EntityBundle, Position
-    }, ApiObservation, PlayerResources
+    ApiObservation, PlayerResources,
+    action::MoveEvent,
+    entity::{
+        self, EntityBundle, Position,
+        building::{HatcheryBundle, LarvaBundle},
+        map::{DestructibleRockBundle, MineralPatchBundle, VespeneGeyserBundle},
+        unit::{OverlordBundle, Worker, WorkerBundle},
+    },
 };
 
 #[derive(ScheduleLabel, Default, Clone, Copy, Debug, Hash, PartialEq, Eq)]
@@ -28,6 +39,15 @@ struct StepRun;
 #[derive(ScheduleLabel, Default, Clone, Copy, Debug, Hash, PartialEq, Eq)]
 struct StepEnd;
 
+#[derive(Parser, Clone, Debug, PartialEq, Eq)]
+struct Args {
+    #[arg(short, long)]
+    start_process: bool,
+
+    #[arg(short, long)]
+    map: String,
+}
+
 fn main() -> Result<(), anyhow::Error> {
     tracing_subscriber::fmt()
         .compact()
@@ -37,7 +57,13 @@ fn main() -> Result<(), anyhow::Error> {
         .init();
 
     info!("starting process");
-    let (mut process, mut client) = process::launch_client()?;
+    let args = Args::parse();
+
+    let (process, mut client) = if args.start_process {
+        process::launch_client().map(|(p, c)| (Some(p), c))?
+    } else {
+        (None, Client::connect("127.0.0.1", 8167)?)
+    };
 
     info!("Starting game");
     let player = PlayerSetup {
@@ -54,7 +80,7 @@ fn main() -> Result<(), anyhow::Error> {
         ..Default::default()
     };
 
-    client.start_game("Ladder2019Season3/TritonLE", player.clone(), opponent)?;
+    client.start_game(format!("{}.SC2Map", args.map), player.clone(), opponent)?;
 
     info!("Joining game");
     let bot_id = client.join_game(player)?;
@@ -157,8 +183,11 @@ fn main() -> Result<(), anyhow::Error> {
         // Check response here.
     }
 
-    process.kill()?;
-    process.wait()?;
+    if let Some(mut process) = process {
+        process.kill()?;
+        process.wait()?;
+    }
+
     Ok(())
 }
 
@@ -248,5 +277,4 @@ fn move_workers(mut events: EventWriter<MoveEvent>, query: Query<&entity::Id, Wi
     for worker in query.iter() {
         events.send(MoveEvent::new(&[*worker], Position::new(0.0, 0.0)));
     }
-    
 }

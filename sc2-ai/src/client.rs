@@ -6,8 +6,6 @@ use sc2_proto::sc2api::{InterfaceOptions, PlayerSetup, Request, Response, respon
 use thiserror::Error;
 use tungstenite::{Message, WebSocket, stream::MaybeTlsStream};
 
-use crate::process;
-
 pub struct Client(WebSocket<MaybeTlsStream<TcpStream>>);
 
 #[derive(Error, Debug, Clone)]
@@ -39,15 +37,13 @@ impl Client {
 
     pub fn start_game(
         &mut self,
-        map: &str,
+        map: String,
         player: PlayerSetup,
         opponent: PlayerSetup,
     ) -> Result<(), anyhow::Error> {
         let request = {
             let mut request = Request::new();
             let req_create_game = request.mut_create_game();
-
-            let map = process::map_path(map);
 
             req_create_game.mut_local_map().set_map_path(map);
             req_create_game.player_setup = vec![player, opponent];
