@@ -1,4 +1,4 @@
-use bevy_ecs::{bundle::Bundle, component::Component};
+use bevy::ecs::{bundle::Bundle, component::Component};
 
 use super::EntityBundle;
 

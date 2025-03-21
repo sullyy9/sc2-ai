@@ -1,11 +1,13 @@
 use std::net::TcpStream;
 
 use anyhow::anyhow;
+use bevy::ecs::system::Resource;
 use protobuf::Message as _;
 use sc2_proto::sc2api::{InterfaceOptions, PlayerSetup, Request, Response, response_create_game};
 use thiserror::Error;
 use tungstenite::{Message, WebSocket, stream::MaybeTlsStream};
 
+#[derive(Resource, Debug)]
 pub struct Client(WebSocket<MaybeTlsStream<TcpStream>>);
 
 #[derive(Error, Debug, Clone)]

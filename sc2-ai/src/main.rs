@@ -1,26 +1,22 @@
-use bevy_ecs::{
-    event::{EventWriter, Events},
+use core::{CorePlugin, StartupMode};
+use std::net::Ipv4Addr;
+
+use bevy::app::{App, Update};
+use bevy::ecs::{
+    event::EventWriter,
     query::With,
-    schedule::{Schedule, ScheduleLabel},
-    system::{Commands, Query, Res},
-    world::World,
+    system::{Commands, Query, Res, Resource},
 };
 use clap::Parser;
-use client::Client;
-use num_traits::FromPrimitive as _;
-use protobuf::MessageField;
-use sc2_proto::{
-    common::Race,
-    sc2api::{self, Difficulty, PlayerSetup, PlayerType, Request, ResponseObservation, Status},
-};
-use tracing::{error, info, warn};
 
-mod client;
+use num_traits::FromPrimitive as _;
+use tracing::{info, warn};
+
+mod core;
 mod game;
-mod process;
 
 use game::{
-    ApiObservation, PlayerResources,
+    ApiObservation,
     action::MoveEvent,
     entity::{
         self, EntityBundle, Position,
@@ -29,15 +25,6 @@ use game::{
         unit::{OverlordBundle, Worker, WorkerBundle},
     },
 };
-
-#[derive(ScheduleLabel, Default, Clone, Copy, Debug, Hash, PartialEq, Eq)]
-struct Startup;
-
-#[derive(ScheduleLabel, Default, Clone, Copy, Debug, Hash, PartialEq, Eq)]
-struct StepRun;
-
-#[derive(ScheduleLabel, Default, Clone, Copy, Debug, Hash, PartialEq, Eq)]
-struct StepEnd;
 
 #[derive(Parser, Clone, Debug, PartialEq, Eq)]
 struct Args {
@@ -48,6 +35,9 @@ struct Args {
     map: String,
 }
 
+#[derive(Resource, Default, Clone, Copy, Debug, Hash, PartialEq, Eq)]
+struct PlayerId(u32);
+
 fn main() -> Result<(), anyhow::Error> {
     tracing_subscriber::fmt()
         .compact()
@@ -56,144 +46,46 @@ fn main() -> Result<(), anyhow::Error> {
         .with_target(false)
         .init();
 
-    info!("starting process");
     let args = Args::parse();
 
-    let (process, mut client) = if args.start_process {
-        process::launch_client().map(|(p, c)| (Some(p), c))?
+    let core = if args.start_process {
+        CorePlugin::new(StartupMode::Launch, args.map)
     } else {
-        (None, Client::connect("127.0.0.1", 8167)?)
+        CorePlugin::new(
+            StartupMode::Connect {
+                addr: Ipv4Addr::new(127, 0, 0, 1),
+                port: 8167,
+            },
+            args.map,
+        )
     };
-
-    info!("Starting game");
-    let player = PlayerSetup {
-        type_: Some(PlayerType::Participant.into()),
-        race: Some(Race::Zerg.into()),
-        player_name: Some("Tomobot".to_owned()),
-        ..Default::default()
-    };
-
-    let opponent = PlayerSetup {
-        type_: Some(PlayerType::Computer.into()),
-        race: Some(Race::Terran.into()),
-        difficulty: Some(Difficulty::Medium.into()),
-        ..Default::default()
-    };
-
-    client.start_game(format!("{}.SC2Map", args.map), player.clone(), opponent)?;
-
-    info!("Joining game");
-    let bot_id = client.join_game(player)?;
 
     info!("Setting up ECS");
-    let mut world = World::new();
 
-    let startup = {
-        let mut schedule = Schedule::new(Startup);
-        schedule.add_systems(create_entities);
-        schedule
-    };
+    let mut app = App::new();
 
-    let step_run = {
-        let mut schedule = Schedule::new(StepRun);
-        schedule.add_systems(move_workers);
-        schedule
-    };
+    app.add_plugins(core);
 
-    let step_end = {
-        let mut schedule = Schedule::new(StepEnd);
-        schedule.add_systems(game::action::action_handler::<MoveEvent>);
-        schedule
-    };
+    app.add_systems(Update, move_workers);
 
-    world.add_schedule(startup);
-    world.add_schedule(step_run);
-    world.add_schedule(step_end);
-
-    world.insert_resource(Events::<MoveEvent>::default());
-    world.insert_resource(game::action::Actions::default());
+    app.set_runner(|mut app| {
+        loop {
+            app.update();
+            if let Some(exit) = app.should_exit() {
+                return exit;
+            }
+        }
+    });
 
     info!("Running game");
-    for step in 0.. {
-        // info!("Playing step {step}");
-        let request = {
-            let mut request = Request::new();
-            request.mut_observation().set_disable_fog(false);
-            request
-        };
-
-        let mut response = client.send(request)?;
-        if matches!(response.status(), Status::ended) {
-            let result = response.observation().player_result[bot_id as usize - 1].result();
-            info!("Game finished. Result: {:?}", result);
-            break;
-        }
-
-        let ResponseObservation {
-            actions: _,
-            action_errors: _,
-            observation: MessageField(Some(observation)),
-            chat: _,
-            ..
-        } = response.take_observation()
-        else {
-            error!("Api response contains unexpected pattern");
-            continue;
-        };
-
-        let sc2api::Observation {
-            game_loop: _,
-            player_common: MessageField(Some(player)),
-            alerts: _,
-            abilities: _,
-            score: _,
-            raw_data: MessageField(Some(observation)),
-            ..
-        } = *observation
-        else {
-            error!("Observation contains unexpected pattern");
-            continue;
-        };
-
-        // Transfer data into ECS.
-        world.insert_resource::<ApiObservation>(ApiObservation::from(*observation));
-        world.insert_resource::<PlayerResources>(PlayerResources::from(*player));
-
-        // Run startup systems on first step
-        if step == 0 {
-            world.run_schedule(Startup);
-        }
-
-        world.run_schedule(StepRun);
-
-        world.run_schedule(StepEnd);
-
-        let request = {
-            let mut request = Request::new();
-            let api_actions = &mut request.mut_action().actions;
-
-            // Move this tick's actions into the request.
-            let mut actions = world.resource_mut::<game::action::Actions>();
-            api_actions.append(&mut actions.0);
-
-            request
-        };
-
-        let _response = client.send(request)?;
-        // Check response here.
-    }
-
-    if let Some(mut process) = process {
-        process.kill()?;
-        process.wait()?;
-    }
+    app.run();
 
     Ok(())
 }
 
 /// Create entities by evaluating the [`Observation`] resource.
 fn create_entities(mut commands: Commands, observation: Res<ApiObservation>) {
-    for unit in &observation.into_inner().units {
+    for unit in &observation.units {
         use sc2_proto::unit::TypeId;
         let unit_type = TypeId::from_u32(unit.unit_type()).unwrap();
 

@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use bevy_ecs::system::Resource;
+use bevy::ecs::system::Resource;
 
 /// Observation provided by the game API.
 /// 

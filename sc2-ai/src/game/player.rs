@@ -1,4 +1,4 @@
-use bevy_ecs::system::Resource;
+use bevy::ecs::system::Resource;
 
 /// Current player resources.
 ///

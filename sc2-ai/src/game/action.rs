@@ -1,4 +1,4 @@
-use bevy_ecs::{
+use bevy::ecs::{
     event::{Event, EventReader},
     system::{ResMut, Resource},
 };

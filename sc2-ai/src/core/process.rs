@@ -4,9 +4,10 @@ use std::{
     process::{Child, Command, ExitStatus},
 };
 
+use bevy::ecs::system::Resource;
 use regex::Regex;
 
-use crate::client::Client;
+use super::client::Client;
 
 const SC2_BINARY: &str = "SC2_x64.exe";
 const SC2_SUPPORT: &str = "Support64";
@@ -27,6 +28,7 @@ const DEFAULT_SC2_PATH: &str = {
     }
 };
 
+#[derive(Resource, Debug)]
 pub struct Process(Child);
 
 impl Drop for Process {

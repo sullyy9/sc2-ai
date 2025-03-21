@@ -2,7 +2,7 @@ pub mod building;
 pub mod map;
 pub mod unit;
 
-use bevy_ecs::{bundle::Bundle, component::Component};
+use bevy::ecs::{bundle::Bundle, component::Component};
 
 pub use super::position::Position;
 

@@ -1,4 +1,4 @@
-use bevy_ecs::component::Component;
+use bevy::ecs::component::Component;
 
 #[derive(Component, Default, Clone, Copy, Debug, PartialEq)]
 pub struct Position {
