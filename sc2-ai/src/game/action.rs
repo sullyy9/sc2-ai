@@ -1,7 +1,4 @@
-use bevy::ecs::{
-    event::{Event, EventReader},
-    system::{ResMut, Resource},
-};
+use bevy::ecs::event::Event;
 use num_traits::ToPrimitive;
 
 use rust_sc2::ids::AbilityId;
@@ -37,14 +34,4 @@ impl From<MoveEvent> for sc2_proto::sc2api::Action {
 
         action
     }
-}
-
-#[derive(Resource, Default, Clone, Debug, PartialEq)]
-pub struct Actions(pub Vec<sc2_proto::sc2api::Action>);
-
-pub fn action_handler<T>(mut event: EventReader<T>, mut actions: ResMut<Actions>)
-where
-    T: Event + Into<sc2_proto::sc2api::Action> + Clone,
-{
-    actions.0.extend(event.read().map(|e| e.clone().into()));
 }

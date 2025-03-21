@@ -1,8 +1,11 @@
 use std::net::Ipv4Addr;
 
 use bevy::{
-    app::{App, First, Last, Plugin, PostUpdate, PreUpdate},
-    ecs::system::{Res, ResMut},
+    app::{App, AppExit, First, Last, Plugin},
+    ecs::{
+        event::{Event, EventReader, EventWriter},
+        system::{Res, ResMut, Resource},
+    },
 };
 use process::Process;
 use protobuf::MessageField;
@@ -16,10 +19,7 @@ use sc2_proto::{
 mod client;
 mod process;
 
-use crate::{
-    PlayerId,
-    game::{ApiObservation, PlayerResources, action::MoveEvent},
-};
+use crate::{PlayerId, game::action::MoveEvent};
 use client::Client;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -83,16 +83,13 @@ impl Plugin for CorePlugin {
             app.insert_resource(process);
         }
 
-        app.init_resource::<crate::game::action::Actions>();
+        app.init_resource::<Actions>();
         app.init_resource::<ApiObservation>();
-        app.init_resource::<PlayerResources>();
+        app.init_resource::<PlayerCommon>();
 
         app.add_event::<MoveEvent>();
 
         app.add_systems(First, fetch_world_state);
-        app.add_systems(PreUpdate, super::create_entities);
-
-        app.add_systems(PostUpdate, crate::game::action::action_handler::<MoveEvent>);
         app.add_systems(Last, send_actions);
     }
 
@@ -104,11 +101,38 @@ impl Plugin for CorePlugin {
     }
 }
 
+/// Observation provided by the game API.
+///
+/// This contains things like visibile units, effects and events. It is stored as a resource in the
+/// ECS in order for other systems to read and generate other entities from it.
+#[derive(Resource, Default, Clone, Debug, PartialEq)]
+pub struct ApiObservation(sc2_proto::raw::ObservationRaw);
+
+impl std::ops::Deref for ApiObservation {
+    type Target = sc2_proto::raw::ObservationRaw;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[derive(Resource, Default, Clone, Debug, PartialEq)]
+pub struct PlayerCommon(sc2_proto::sc2api::PlayerCommon);
+
+impl std::ops::Deref for PlayerCommon {
+    type Target = sc2_proto::sc2api::PlayerCommon;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 fn fetch_world_state(
     player: Res<PlayerId>,
     mut client: ResMut<Client>,
     mut api_observation: ResMut<ApiObservation>,
-    mut player_resources: ResMut<PlayerResources>,
+    mut player_resources: ResMut<PlayerCommon>,
+    mut exit: EventWriter<AppExit>,
 ) {
     let request = {
         let mut request = Request::new();
@@ -121,7 +145,7 @@ fn fetch_world_state(
     if matches!(response.status(), Status::ended) {
         let result = response.observation().player_result[player.0 as usize - 1].result();
         info!("Game finished. Result: {:?}", result);
-        // TODO: end app
+        exit.send(AppExit::Success);
     }
 
     let ResponseObservation {
@@ -150,11 +174,21 @@ fn fetch_world_state(
         return;
     };
 
-    *api_observation = ApiObservation::from(*observation);
-    *player_resources = PlayerResources::from(*player);
+    *api_observation = ApiObservation(*observation);
+    *player_resources = PlayerCommon(*player);
 }
 
-fn send_actions(mut client: ResMut<Client>, mut actions: ResMut<crate::game::action::Actions>) {
+#[derive(Resource, Default, Clone, Debug, PartialEq)]
+pub struct Actions(pub Vec<sc2_proto::sc2api::Action>);
+
+pub fn action_handler<T>(mut event: EventReader<T>, mut actions: ResMut<Actions>)
+where
+    T: Event + Into<sc2_proto::sc2api::Action> + Clone,
+{
+    actions.0.extend(event.read().map(|e| e.clone().into()));
+}
+
+fn send_actions(mut client: ResMut<Client>, mut actions: ResMut<Actions>) {
     let request = {
         let mut request = Request::new();
         let api_actions = &mut request.mut_action().actions;
