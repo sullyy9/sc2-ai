@@ -2,11 +2,7 @@ use core::{CorePlugin, StartupMode};
 use std::net::Ipv4Addr;
 
 use bevy::app::{App, Update};
-use bevy::ecs::{
-    event::EventWriter,
-    query::With,
-    system::{Query, Resource},
-};
+use bevy::ecs::{event::EventWriter, query::With, system::Query};
 use clap::Parser;
 
 use game::GamePlugin;
@@ -28,9 +24,6 @@ struct Args {
     #[arg(short, long)]
     map: String,
 }
-
-#[derive(Resource, Default, Clone, Copy, Debug, Hash, PartialEq, Eq)]
-struct PlayerId(u32);
 
 fn main() -> Result<(), anyhow::Error> {
     tracing_subscriber::fmt()

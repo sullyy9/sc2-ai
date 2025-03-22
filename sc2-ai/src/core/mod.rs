@@ -19,7 +19,7 @@ use sc2_proto::{
 mod client;
 mod process;
 
-use crate::{PlayerId, game::action::MoveEvent};
+use crate::game::action::MoveEvent;
 use client::Client;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -100,6 +100,9 @@ impl Plugin for CorePlugin {
         }
     }
 }
+
+#[derive(Resource, Default, Clone, Copy, Debug, Hash, PartialEq, Eq)]
+struct PlayerId(u32);
 
 /// Observation provided by the game API.
 ///
