@@ -4,7 +4,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "run",
+            "label": "run connect",
             "type": "shell",
             "options": {
                 "env": {
@@ -16,6 +16,22 @@
                 "run",
                 "--",
                 "--map", "sc2-ai-cup-2022"
+            ]
+        },
+        {
+            "label": "run launch",
+            "type": "shell",
+            "options": {
+                "env": {
+                    "SC2PATH": "C:\\Program Files (x86)\\StarCraft II"
+                }
+            },
+            "command": "cargo",
+            "args": [
+                "run",
+                "--",
+                "--start-process",
+                "--map", "Ladder2019Season3/TritonLE"
             ]
         }
     ]
