@@ -1,8 +1,7 @@
 use protobuf_codegen::Customize;
 
-
 fn main() -> Result<(), anyhow::Error> {
-     protobuf_codegen::Codegen::new()
+    protobuf_codegen::Codegen::new()
         .pure()
         .includes(["s2client-proto"])
         .inputs([

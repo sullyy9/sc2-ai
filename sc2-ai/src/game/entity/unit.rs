@@ -19,4 +19,3 @@ pub struct OverlordBundle {
     pub tag: Overlord,
     pub unit: EntityBundle,
 }
-

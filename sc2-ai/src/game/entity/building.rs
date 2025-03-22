@@ -19,4 +19,3 @@ pub struct LarvaBundle {
     pub tag: Larva,
     pub unit: EntityBundle,
 }
-
