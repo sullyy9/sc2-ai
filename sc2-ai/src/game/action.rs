@@ -1,25 +1,25 @@
-use bevy::ecs::event::Event;
+use bevy::ecs::{entity::Entity, event::Event, world::Command};
 use num_traits::ToPrimitive;
 
 use rust_sc2::ids::AbilityId;
 
-use super::geometry::Vec3;
+use crate::core::Actions;
+
+use super::{entity::GameId, geometry::Vec3};
+
+struct MoveCommand {
+    units: Box<[Entity]>,
+    destination: Vec3,
+}
 
 #[derive(Event, Default, Clone, Debug, PartialEq)]
 pub struct MoveEvent {
-    units: Box<[super::entity::GameId]>,
+    units: Box<[Entity]>,
     destination: Vec3,
 }
 
 impl MoveEvent {
-    pub fn new(units: &[super::entity::GameId], destination: Vec3) -> Self {
-        Self {
-            units: units.to_owned().into_boxed_slice(),
-            destination,
-        }
-    }
-
-    pub fn units(&self) -> &[super::entity::GameId] {
+    pub fn units(&self) -> &[Entity] {
         &self.units
     }
 
@@ -28,18 +28,56 @@ impl MoveEvent {
     }
 }
 
-impl From<MoveEvent> for sc2_proto::sc2api::Action {
-    fn from(event: MoveEvent) -> Self {
+impl Command for MoveCommand {
+    fn apply(self, world: &mut bevy::ecs::world::World) {
+        let units = self
+            .units
+            .into_iter()
+            .map(|e| {
+                world
+                    .entity(e)
+                    .get::<GameId>()
+                    .expect("Found missing GameId for entity")
+            })
+            .map(|id| u64::from(*id))
+            .collect::<Box<_>>();
+
         let mut action = sc2_proto::sc2api::Action::new();
         let unit_command = action.action_raw.mut_or_insert_default().mut_unit_command();
 
         unit_command.set_ability_id(AbilityId::Move.to_i32().unwrap());
-        unit_command.set_target_world_space_pos(event.destination.into());
-        unit_command
-            .unit_tags
-            .extend(event.units.iter().map(|id| u64::from(*id)));
+        unit_command.set_target_world_space_pos(self.destination.into());
+        unit_command.unit_tags.extend(units);
         unit_command.set_queue_command(false);
 
-        action
+        let mut actions = world.resource_mut::<Actions>();
+        actions.push(action);
+    }
+}
+
+pub trait ActionCommandsExt {
+    /// Request that a collection of units move to a location.
+    ///
+    /// Dispatches a [`MoveEvent`].
+    fn move_units(&mut self, units: &[Entity], destination: Vec3);
+
+    /// Request that a single unit move to a location.
+    ///
+    /// Dispatches a [`MoveEvent`].
+    fn move_unit(&mut self, unit: Entity, destination: Vec3) {
+        self.move_units(&[unit], destination);
+    }
+}
+
+impl ActionCommandsExt for bevy::ecs::system::Commands<'_, '_> {
+    fn move_units(&mut self, units: &[Entity], destination: Vec3) {
+        let units: Box<[_]> = Box::from(units);
+
+        self.queue(MoveCommand {
+            units: units.clone(),
+            destination,
+        });
+
+        self.send_event(MoveEvent { units, destination });
     }
 }

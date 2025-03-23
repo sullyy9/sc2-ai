@@ -20,11 +20,10 @@ mod client;
 mod command;
 mod process;
 
-use action::Actions;
 use client::Client;
 use process::Process;
 
-pub use action::action_handler;
+pub use action::Actions;
 pub use command::DebugCommands;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -195,15 +194,15 @@ fn send_request(
 ) {
     tracing::info!(
         "Sending Request | actions: {} | commands: {}",
-        actions.0.len(),
-        commands.0.len()
+        actions.len(),
+        commands.len()
     );
 
     let request = {
         let mut complete_request = Request::new();
 
         let request = &mut complete_request.mut_action();
-        request.actions.append(&mut actions.0);
+        request.actions.append(&mut actions);
 
         complete_request
     };
@@ -214,7 +213,7 @@ fn send_request(
         let mut complete_request = Request::new();
 
         let request = &mut complete_request.mut_debug().debug;
-        request.append(&mut commands.0);
+        request.append(&mut commands);
 
         complete_request
     };

@@ -1,15 +1,18 @@
+use bevy::{
+    app::{App, Update},
+    ecs::{
+        bundle::Bundle,
+        component::Component,
+        entity::Entity,
+        event::EventReader,
+        query::With,
+        schedule::IntoSystemConfigs as _,
+        system::{Commands, Query},
+    },
+};
+use clap::Parser;
 use core::{CorePlugin, StartupMode};
 use std::net::Ipv4Addr;
-
-use bevy::app::{App, Update};
-use bevy::ecs::event::EventReader;
-use bevy::ecs::schedule::IntoSystemConfigs as _;
-use bevy::ecs::system::Commands;
-use bevy::ecs::{event::EventWriter, query::With, system::Query};
-use clap::Parser;
-
-use game::debug::Color;
-use game::geometry::{Line, Rect};
 use tracing::{info, warn};
 
 mod core;
@@ -17,10 +20,10 @@ mod game;
 
 use game::{
     GamePlugin,
-    action::MoveEvent,
-    debug::DrawCommandsExt,
-    entity::{self, unit::Worker},
-    geometry::Vec3,
+    action::{ActionCommandsExt, MoveEvent},
+    debug::{Color, DrawCommandsExt},
+    entity::{building::Hatchery, unit::Worker},
+    geometry::{Line, Rect, Vec3},
 };
 
 #[derive(Parser, Clone, Debug, PartialEq, Eq)]
@@ -30,26 +33,6 @@ struct Args {
 
     #[arg(short, long)]
     map: String,
-}
-
-use rust_sc2::prelude::*;
-
-#[bot]
-#[derive(Default)]
-struct WorkerRush;
-impl Player for WorkerRush {
-    fn get_player_settings(&self) -> PlayerSettings {
-        PlayerSettings::new(Race::Protoss)
-    }
-    fn on_start(&mut self) -> SC2Result<()> {
-        for worker in &self.units.my.workers {
-            worker.attack(Target::Pos(self.enemy_start), false);
-        }
-
-        // self.debug.draw_box(p0, p1, color);
-
-        Ok(())
-    }
 }
 
 fn main() -> Result<(), anyhow::Error> {
@@ -100,10 +83,9 @@ fn main() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn move_workers(mut events: EventWriter<MoveEvent>, query: Query<&entity::GameId, With<Worker>>) {
-    for worker in query.iter() {
-        events.send(MoveEvent::new(&[*worker], Vec3::new_2d(100.0, 100.0)));
-    }
+fn move_workers(mut commands: Commands, query: Query<Entity, With<Worker>>) {
+    let workers = query.iter().collect::<Box<_>>();
+    commands.move_units(&workers, Vec3::new_2d(100.0, 100.0));
 }
 
 fn highlight_workers(mut commands: Commands, query: Query<&Vec3, With<Worker>>) {
@@ -119,18 +101,20 @@ fn highlight_workers(mut commands: Commands, query: Query<&Vec3, With<Worker>>) 
 fn draw_move_actions(
     mut commands: Commands,
     mut actions: EventReader<MoveEvent>,
-    query: Query<(&entity::GameId, &Vec3)>,
+    query: Query<(Entity, &Vec3)>,
 ) {
     for action in actions.read() {
-        for unit_id in action.units() {
-            if let Some((_, position)) = query.iter().find(|(id, _)| *id == unit_id) {
-                commands.draw_line(
-                    Line::new(*position, *action.destination()),
-                    Color::default(),
-                );
-            } else {
-                warn!("Unable to find unit with id {unit_id:?} referenced by move action");
-            }
+        let destination = *action.destination();
+
+        for &unit in action.units() {
+            let Ok((_, &position)) = query
+                .get(unit)
+                .inspect_err(|e| warn!("When querying entity: {e}"))
+            else {
+                continue;
+            };
+
+            commands.draw_line(Line::new(position, destination), Color::default());
         }
     }
 }

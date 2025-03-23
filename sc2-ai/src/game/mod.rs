@@ -2,7 +2,7 @@
 
 use action::MoveEvent;
 use bevy::{
-    app::{App, Plugin, PostUpdate, PreUpdate, Startup},
+    app::{App, Plugin, PreUpdate, Startup},
     ecs::system::{Commands, Res, ResMut},
 };
 use entity::{
@@ -15,7 +15,7 @@ use geometry::Vec3;
 use num_traits::FromPrimitive;
 use tracing::warn;
 
-use crate::core::{ApiObservation, action_handler};
+use crate::core::ApiObservation;
 
 pub mod action;
 pub mod debug;
@@ -34,7 +34,6 @@ impl Plugin for GamePlugin {
 
         app.add_systems(Startup, create_entities);
         app.add_systems(PreUpdate, update_entities);
-        app.add_systems(PostUpdate, action_handler::<action::MoveEvent>);
     }
 }
 
