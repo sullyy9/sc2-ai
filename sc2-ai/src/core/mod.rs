@@ -1,13 +1,12 @@
 use std::net::Ipv4Addr;
 
 use bevy::{
-    app::{App, AppExit, First, Last, Plugin},
+    app::{App, AppExit, First, Last, Plugin, PreStartup},
     ecs::{
-        event::{Event, EventReader, EventWriter},
+        event::EventWriter,
         system::{Res, ResMut, Resource},
     },
 };
-use process::Process;
 use protobuf::MessageField;
 use tracing::{error, info};
 
@@ -16,11 +15,17 @@ use sc2_proto::{
     sc2api::{self, Difficulty, PlayerSetup, PlayerType, Request, ResponseObservation, Status},
 };
 
+mod action;
 mod client;
+mod command;
 mod process;
 
-use crate::game::action::MoveEvent;
+use action::Actions;
 use client::Client;
+use process::Process;
+
+pub use action::action_handler;
+pub use command::DebugCommands;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StartupMode {
@@ -84,13 +89,15 @@ impl Plugin for CorePlugin {
         }
 
         app.init_resource::<Actions>();
+        app.init_resource::<DebugCommands>();
+
         app.init_resource::<ApiObservation>();
         app.init_resource::<PlayerCommon>();
 
-        app.add_event::<MoveEvent>();
+        app.add_systems(PreStartup, fetch_world_state);
 
         app.add_systems(First, fetch_world_state);
-        app.add_systems(Last, send_actions);
+        app.add_systems(Last, send_request);
     }
 
     fn cleanup(&self, app: &mut App) {
@@ -181,24 +188,35 @@ fn fetch_world_state(
     *player_resources = PlayerCommon(*player);
 }
 
-#[derive(Resource, Default, Clone, Debug, PartialEq)]
-pub struct Actions(pub Vec<sc2_proto::sc2api::Action>);
+fn send_request(
+    mut client: ResMut<Client>,
+    mut actions: ResMut<Actions>,
+    mut commands: ResMut<DebugCommands>,
+) {
+    tracing::info!(
+        "Sending Request | actions: {} | commands: {}",
+        actions.0.len(),
+        commands.0.len()
+    );
 
-pub fn action_handler<T>(mut event: EventReader<T>, mut actions: ResMut<Actions>)
-where
-    T: Event + Into<sc2_proto::sc2api::Action> + Clone,
-{
-    actions.0.extend(event.read().map(|e| e.clone().into()));
-}
-
-fn send_actions(mut client: ResMut<Client>, mut actions: ResMut<Actions>) {
     let request = {
-        let mut request = Request::new();
-        let api_actions = &mut request.mut_action().actions;
+        let mut complete_request = Request::new();
 
-        // Move this tick's actions into the request.
-        api_actions.append(&mut actions.0);
-        request
+        let request = &mut complete_request.mut_action();
+        request.actions.append(&mut actions.0);
+
+        complete_request
+    };
+
+    let _response = client.send(request).inspect_err(|e| error!("{e}")).unwrap();
+
+    let request = {
+        let mut complete_request = Request::new();
+
+        let request = &mut complete_request.mut_debug().debug;
+        request.append(&mut commands.0);
+
+        complete_request
     };
 
     let _response = client.send(request).inspect_err(|e| error!("{e}")).unwrap();

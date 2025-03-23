@@ -1,12 +1,8 @@
 //! Deals with transforming data between the SC2 API and types moe suitable for use in ECS systems.
 
-pub mod action;
-pub mod entity;
-mod player;
-mod position;
-
+use action::MoveEvent;
 use bevy::{
-    app::{Plugin, PostUpdate, PreUpdate},
+    app::{App, Plugin, PostUpdate, Startup},
     ecs::system::{Commands, Res},
 };
 use entity::{
@@ -20,12 +16,21 @@ use tracing::warn;
 
 use crate::core::{ApiObservation, action_handler};
 
+pub mod action;
+pub mod debug;
+pub mod entity;
+pub mod geometry;
+mod player;
+
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
-    fn build(&self, app: &mut bevy::app::App) {
-        app.add_systems(PreUpdate, create_entities);
+    fn build(&self, app: &mut App) {
+        app.add_event::<MoveEvent>();
+
+        app.add_systems(Startup, create_entities);
+
         app.add_systems(PostUpdate, action_handler::<action::MoveEvent>);
     }
 }
