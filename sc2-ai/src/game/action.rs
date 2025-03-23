@@ -7,19 +7,19 @@ use super::geometry::Vec3;
 
 #[derive(Event, Default, Clone, Debug, PartialEq)]
 pub struct MoveEvent {
-    units: Box<[super::entity::Id]>,
+    units: Box<[super::entity::GameId]>,
     destination: Vec3,
 }
 
 impl MoveEvent {
-    pub fn new(units: &[super::entity::Id], destination: Vec3) -> Self {
+    pub fn new(units: &[super::entity::GameId], destination: Vec3) -> Self {
         Self {
             units: units.to_owned().into_boxed_slice(),
             destination,
         }
     }
 
-    pub fn units(&self) -> &[super::entity::Id] {
+    pub fn units(&self) -> &[super::entity::GameId] {
         &self.units
     }
 

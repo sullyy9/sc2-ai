@@ -100,7 +100,7 @@ fn main() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn move_workers(mut events: EventWriter<MoveEvent>, query: Query<&entity::Id, With<Worker>>) {
+fn move_workers(mut events: EventWriter<MoveEvent>, query: Query<&entity::GameId, With<Worker>>) {
     for worker in query.iter() {
         events.send(MoveEvent::new(&[*worker], Vec3::new_2d(100.0, 100.0)));
     }
@@ -112,14 +112,14 @@ fn highlight_workers(mut commands: Commands, query: Query<&Vec3, With<Worker>>) 
 
     for pos in query.iter().map(|pos| pos + box_offset) {
         commands.draw_box(Rect::from_center(pos, box_size), Color::GREEN);
-        commands.draw_text("Unit", pos, Color::default());
+        commands.draw_text("Worker", pos, Color::default());
     }
 }
 
 fn draw_move_actions(
     mut commands: Commands,
     mut actions: EventReader<MoveEvent>,
-    query: Query<(&entity::Id, &Vec3)>,
+    query: Query<(&entity::GameId, &Vec3)>,
 ) {
     for action in actions.read() {
         for unit_id in action.units() {
