@@ -2,8 +2,11 @@
 
 use action::MoveEvent;
 use bevy::{
-    app::{App, Plugin, PreUpdate, Startup},
-    ecs::system::{Commands, Res, ResMut},
+    app::{App, MainScheduleOrder, Plugin, Startup, Update},
+    ecs::{
+        schedule::ScheduleLabel,
+        system::{Commands, Res, ResMut},
+    },
 };
 use entity::{
     EntityBundle, EntityIdMap, GameId,
@@ -26,14 +29,27 @@ mod player;
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct GamePlugin;
 
+#[derive(ScheduleLabel, Default, Clone, Copy, Debug, Hash, PartialEq, Eq)]
+struct DataInit;
+
+#[derive(ScheduleLabel, Default, Clone, Copy, Debug, Hash, PartialEq, Eq)]
+struct DataUpdate;
+
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
+        app.init_schedule(DataInit);
+        app.init_schedule(DataUpdate);
+
+        let mut schedule_order = app.world_mut().resource_mut::<MainScheduleOrder>();
+        schedule_order.insert_startup_before(Startup, DataInit);
+        schedule_order.insert_before(Update, DataUpdate);
+
         app.init_resource::<EntityIdMap>();
 
         app.add_event::<MoveEvent>();
 
-        app.add_systems(Startup, create_entities);
-        app.add_systems(PreUpdate, update_entities);
+        app.add_systems(DataInit, create_entities);
+        app.add_systems(DataUpdate, update_entities);
     }
 }
 
