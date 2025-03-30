@@ -3,7 +3,7 @@ use protobuf::MessageField;
 
 use crate::{
     core::DebugCommands,
-    game::geometry::{Line, Rect, Vec3},
+    game::geometry::{Line, Rect, Sphere, Vec3},
 };
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
@@ -67,7 +67,7 @@ enum Draw {
     Text(String, Vec3, Option<Color>, Option<u32>),
     Line(Line, Option<Color>),
     Box(Rect, Option<Color>),
-    // Sphere(Point3, f32, Option<Color>),
+    Sphere(Sphere, Option<Color>),
 }
 
 impl From<sc2_proto::debug::DebugText> for Draw {
@@ -149,6 +149,14 @@ impl From<Draw> for sc2_proto::debug::DebugDraw {
 
                 draw.text.push(api_text);
             }
+            Draw::Sphere(sphere, color) => {
+                let mut api_sphere = sc2_proto::debug::DebugSphere::new();
+                api_sphere.p = MessageField(Some(Box::new((*sphere.center()).into())));
+                api_sphere.set_r(sphere.radius());
+                api_sphere.color = MessageField(color.map(|c| Box::new(c.into())));
+
+                draw.spheres.push(api_sphere);
+            }
         }
 
         draw
@@ -174,6 +182,7 @@ pub trait DrawCommandsExt {
     fn draw_text(&mut self, text: impl Into<String>, position: Vec3, color: Color);
     fn draw_line(&mut self, line: Line, color: Color);
     fn draw_box(&mut self, rect: Rect, color: Color);
+    fn draw_sphere(&mut self, sphere: Sphere, color: Color);
 }
 
 impl DrawCommandsExt for bevy::ecs::system::Commands<'_, '_> {
@@ -187,5 +196,8 @@ impl DrawCommandsExt for bevy::ecs::system::Commands<'_, '_> {
 
     fn draw_box(&mut self, rect: Rect, color: Color) {
         self.queue(Draw::Box(rect, Some(color)));
+    }
+    fn draw_sphere(&mut self, sphere: Sphere, color: Color) {
+        self.queue(Draw::Sphere(sphere, Some(color)));
     }
 }
