@@ -12,7 +12,10 @@ use tracing::{error, info};
 
 use sc2_proto::{
     common::Race,
-    sc2api::{self, Difficulty, PlayerSetup, PlayerType, Request, ResponseObservation, Status},
+    sc2api::{
+        self, Difficulty, PlayerSetup, PlayerType, Request, ResponseGameInfo, ResponseObservation,
+        Status,
+    },
 };
 
 mod action;
@@ -90,9 +93,11 @@ impl Plugin for CorePlugin {
         app.init_resource::<Actions>();
         app.init_resource::<DebugCommands>();
 
+        app.init_resource::<ApiMapInfo>();
         app.init_resource::<ApiObservation>();
         app.init_resource::<PlayerCommon>();
 
+        app.add_systems(PreStartup, fetch_game_info);
         app.add_systems(PreStartup, fetch_world_state);
 
         app.add_systems(First, fetch_world_state);
@@ -134,6 +139,38 @@ impl std::ops::Deref for PlayerCommon {
     fn deref(&self) -> &Self::Target {
         &self.0
     }
+}
+
+#[derive(Resource, Default, Clone, Debug, PartialEq)]
+pub struct ApiMapInfo(sc2_proto::raw::StartRaw);
+
+impl std::ops::Deref for ApiMapInfo {
+    type Target = sc2_proto::raw::StartRaw;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+fn fetch_game_info(mut client: ResMut<Client>, mut api_map: ResMut<ApiMapInfo>) {
+    let request = {
+        let mut request = Request::new();
+        request.mut_game_info();
+        request
+    };
+
+    let mut response = client.send(request).inspect_err(|e| error!("{e}")).unwrap();
+
+    let ResponseGameInfo {
+        start_raw: MessageField(Some(start_raw)),
+        ..
+    } = response.take_game_info()
+    else {
+        error!("Api response contains unexpected pattern");
+        return;
+    };
+
+    *api_map = ApiMapInfo(*start_raw);
 }
 
 fn fetch_world_state(
