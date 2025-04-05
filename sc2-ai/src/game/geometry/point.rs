@@ -2,14 +2,14 @@ use bevy::ecs::component::Component;
 use duplicate::duplicate_item;
 
 #[derive(Component, Default, Clone, Copy, Debug, PartialEq)]
-pub struct Vec3(bevy::math::Vec3);
+pub struct Vec3(pub(super) bevy::math::Vec3);
 
 impl Vec3 {
-    pub fn new_3d(x: f32, y: f32, z: f32) -> Self {
+    pub const fn new_3d(x: f32, y: f32, z: f32) -> Self {
         Self(bevy::math::Vec3::new(x, y, z))
     }
 
-    pub fn new_2d(x: f32, y: f32) -> Self {
+    pub const fn new_2d(x: f32, y: f32) -> Self {
         Self(bevy::math::Vec3::new(x, y, 0.0))
     }
 }

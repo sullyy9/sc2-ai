@@ -9,15 +9,15 @@ pub struct Sphere {
 }
 
 impl Sphere {
-    pub fn from_center(center: Vec3, radius: f32) -> Self {
+    pub const fn from_center(center: Vec3, radius: f32) -> Self {
         Self { center, radius }
     }
 
-    pub fn center(&self) -> &Vec3 {
+    pub const fn center(&self) -> &Vec3 {
         &self.center
     }
 
-    pub fn radius(&self) -> f32 {
+    pub const fn radius(&self) -> f32 {
         self.radius
     }
 }

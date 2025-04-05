@@ -1,9 +1,9 @@
 mod line;
 mod point;
-mod rect;
+mod cuboid;
 mod sphere;
 
 pub use line::Line;
 pub use point::Vec3;
-pub use rect::Rect;
+pub use cuboid::Cuboid;
 pub use sphere::Sphere;

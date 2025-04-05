@@ -1,7 +1,7 @@
 use bevy::ecs::system::Resource;
 use ndarray::s;
 
-use crate::game::geometry::{Rect, Vec3};
+use crate::game::geometry::{Cuboid, Vec3};
 
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
 enum GridStatus {
@@ -69,7 +69,7 @@ impl PlacementGrid {
     }
 
     /// Determine if a grid area is empty and an entity can be placed there.
-    pub fn is_area_empty(&self, rect: Rect) -> bool {
+    pub fn is_area_empty(&self, rect: Cuboid) -> bool {
         let (min_x, min_y) = (rect.min().x.floor() as usize, rect.min().y.floor() as usize);
         let (max_x, max_y) = (rect.max().x.floor() as usize, rect.max().y.floor() as usize);
 

@@ -3,7 +3,7 @@ use protobuf::MessageField;
 
 use crate::{
     core::DebugCommands,
-    game::geometry::{Line, Rect, Sphere, Vec3},
+    game::geometry::{Line, Cuboid, Sphere, Vec3},
 };
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
@@ -140,7 +140,7 @@ impl From<sc2_proto::debug::DebugLine> for DrawLine {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct DrawBox {
-    rect: Rect,
+    rect: Cuboid,
     color: Option<Color>,
 }
 
@@ -168,7 +168,7 @@ impl From<sc2_proto::debug::DebugBox> for DrawBox {
         };
 
         Self {
-            rect: Rect::from_corners((*min).into(), (*max).into()),
+            rect: Cuboid::from_corners((*min).into(), (*max).into()),
             color: color.map(|c| (*c).into()),
         }
     }
@@ -261,7 +261,7 @@ impl Command for Draw {
 pub trait DrawCommandsExt {
     fn draw_text(&mut self, text: impl Into<String>, position: Vec3, color: Color);
     fn draw_line(&mut self, line: Line, color: Color);
-    fn draw_box(&mut self, rect: Rect, color: Color);
+    fn draw_box(&mut self, rect: Cuboid, color: Color);
     fn draw_sphere(&mut self, sphere: Sphere, color: Color);
 }
 
@@ -282,7 +282,7 @@ impl DrawCommandsExt for bevy::ecs::system::Commands<'_, '_> {
         }));
     }
 
-    fn draw_box(&mut self, rect: Rect, color: Color) {
+    fn draw_box(&mut self, rect: Cuboid, color: Color) {
         self.queue(Draw::Box(DrawBox {
             rect,
             color: Some(color),

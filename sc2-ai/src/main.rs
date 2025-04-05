@@ -22,8 +22,7 @@ use game::{
     GamePlugin,
     action::{ActionCommandsExt, MoveEvent},
     debug::{Color, DrawCommandsExt},
-    entity::{building::Hatchery, unit::Worker},
-    geometry::{Line, Rect, Vec3},
+    geometry::{Line, Cuboid, Sphere, Vec3},
 };
 
 #[derive(Parser, Clone, Debug, PartialEq, Eq)]
@@ -109,7 +108,7 @@ fn highlight_workers(mut commands: Commands, query: Query<&Vec3, With<Worker>>) 
     let box_offset = Vec3::new_3d(0.0, 0.0, box_size.z / 2.0);
 
     for pos in query.iter().map(|pos| pos + box_offset) {
-        commands.draw_box(Rect::from_center(pos, box_size), Color::GREEN);
+        commands.draw_box(Cuboid::from_center(pos, box_size), Color::GREEN);
         commands.draw_text("Worker", pos, Color::default());
     }
 }

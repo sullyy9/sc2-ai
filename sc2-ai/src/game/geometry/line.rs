@@ -7,7 +7,7 @@ use super::point::Vec3;
 pub struct Line(Vec3, Vec3);
 
 impl Line {
-    pub fn new(p0: Vec3, p1: Vec3) -> Self {
+    pub const fn new(p0: Vec3, p1: Vec3) -> Self {
         Self(p0, p1)
     }
 }
