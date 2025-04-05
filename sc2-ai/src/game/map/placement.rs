@@ -1,9 +1,7 @@
-use bevy::ecs::system::{Res, ResMut, Resource};
+use bevy::ecs::system::Resource;
 use ndarray::s;
 
-use crate::core::ApiMapInfo;
-
-use super::geometry::{Rect, Vec3};
+use crate::game::geometry::{Rect, Vec3};
 
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
 enum GridStatus {
@@ -12,7 +10,7 @@ enum GridStatus {
     Empty,
 }
 
-#[derive(Resource, Default, Clone, Debug, PartialEq)]
+#[derive(Resource, Default, Clone, Debug, PartialEq, Eq)]
 pub struct PlacementGrid(ndarray::Array2<GridStatus>);
 
 impl From<sc2_proto::common::ImageData> for PlacementGrid {
@@ -46,11 +44,11 @@ impl From<sc2_proto::common::ImageData> for PlacementGrid {
 
 impl PlacementGrid {
     pub fn width(&self) -> usize {
-        self.0.dim().0
+        self.0.dim().1
     }
 
     pub fn height(&self) -> usize {
-        self.0.dim().1
+        self.0.dim().0
     }
 
     /// Determine if a single grid space is empty and an entity can be placed there.
@@ -80,8 +78,4 @@ impl PlacementGrid {
             .iter()
             .all(|&status| status == GridStatus::Empty)
     }
-}
-
-pub fn map_info_init(info: Res<ApiMapInfo>, mut placement_grid: ResMut<PlacementGrid>) {
-    *placement_grid = PlacementGrid::from((*info.placement_grid).clone());
 }

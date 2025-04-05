@@ -15,7 +15,7 @@ use entity::{
     unit::{OverlordBundle, WorkerBundle},
 };
 use geometry::Vec3;
-use map::{PlacementGrid, map_info_init};
+use map::{HeightMap, PlacementGrid, map_info_init};
 use num_traits::FromPrimitive;
 use tracing::warn;
 
@@ -48,6 +48,7 @@ impl Plugin for GamePlugin {
 
         app.init_resource::<EntityIdMap>();
         app.init_resource::<PlacementGrid>();
+        app.init_resource::<HeightMap>();
 
         app.add_event::<MoveEvent>();
 
