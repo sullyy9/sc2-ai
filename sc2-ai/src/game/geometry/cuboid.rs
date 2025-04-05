@@ -27,6 +27,21 @@ impl Cuboid {
         Self(min, max)
     }
 
+    /// Create a new cuboid from the centre of its bottom face and a size.
+    pub const fn from_base_center(centre: Vec3, size: Vec3) -> Self {
+        debug_assert!(size.0.x >= 0.0);
+        debug_assert!(size.0.y >= 0.0);
+        debug_assert!(size.0.z >= 0.0);
+
+        let size_x = size.0.x / 2.0;
+        let size_y = size.0.y / 2.0;
+
+        let min = Vec3::new_3d(centre.0.x - size_x, centre.0.y - size_y, centre.0.z);
+        let max = Vec3::new_3d(centre.0.x + size_x, centre.0.y + size_y, centre.0.z + size.0.z);
+
+        Self(min, max)
+    }
+
     pub const fn min(&self) -> &Vec3 {
         &self.0
     }

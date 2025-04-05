@@ -104,11 +104,8 @@ fn move_workers(mut commands: Commands, query: Query<Entity, With<Worker>>) {
 }
 
 fn highlight_workers(mut commands: Commands, query: Query<&Vec3, With<Worker>>) {
-    let box_size = Vec3::new_3d(1.0, 1.0, 1.0);
-    let box_offset = Vec3::new_3d(0.0, 0.0, box_size.z / 2.0);
-
-    for pos in query.iter().map(|pos| pos + box_offset) {
-        commands.draw_box(Cuboid::from_center(pos, box_size), Color::GREEN);
+    for &pos in query.iter() {
+        commands.draw_box(Cuboid::from_base_center(pos, Worker::SIZE), Color::GREEN);
         commands.draw_text("Worker", pos, Color::default());
     }
 }
