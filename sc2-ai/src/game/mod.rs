@@ -15,6 +15,7 @@ use entity::{
     unit::{OverlordBundle, WorkerBundle},
 };
 use geometry::Vec3;
+use map::{PlacementGrid, map_info_init};
 use num_traits::FromPrimitive;
 use tracing::warn;
 
@@ -24,6 +25,7 @@ pub mod action;
 pub mod debug;
 pub mod entity;
 pub mod geometry;
+pub mod map;
 mod player;
 
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
@@ -45,10 +47,12 @@ impl Plugin for GamePlugin {
         schedule_order.insert_before(Update, DataUpdate);
 
         app.init_resource::<EntityIdMap>();
+        app.init_resource::<PlacementGrid>();
 
         app.add_event::<MoveEvent>();
 
         app.add_systems(DataInit, create_entities);
+        app.add_systems(DataInit, map_info_init);
         app.add_systems(DataUpdate, update_entities);
     }
 }

@@ -9,6 +9,7 @@ bevy = { version = "0.15.3", default-features = false, features = ["multi_thread
 clap = { version = "4.5.32", features = ["derive"] }
 dirs = "6.0.0"
 duplicate = "2.0.0"
+ndarray = "0.16.1"
 num-traits = "0.2.19"
 protobuf = { version = "3.7.2", features = ["bytes"] }
 regex = "1.11.1"
