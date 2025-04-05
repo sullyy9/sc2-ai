@@ -43,11 +43,16 @@ pub enum StartupMode {
 pub struct CorePlugin {
     mode: StartupMode,
     map: String,
+    realtime: bool,
 }
 
 impl CorePlugin {
-    pub fn new(mode: StartupMode, map: String) -> Self {
-        Self { mode, map }
+    pub fn new(mode: StartupMode, map: String, realtime: bool) -> Self {
+        Self {
+            mode,
+            map,
+            realtime,
+        }
     }
 }
 
@@ -78,7 +83,12 @@ impl Plugin for CorePlugin {
 
         info!("Starting game");
         client
-            .start_game(format!("{}.SC2Map", self.map), player.clone(), opponent)
+            .start_game(
+                format!("{}.SC2Map", self.map),
+                player.clone(),
+                opponent,
+                self.realtime,
+            )
             .expect("Failed to start game");
 
         info!("Joining game");
@@ -251,6 +261,20 @@ fn send_request(
 
         let request = &mut complete_request.mut_debug().debug;
         request.append(&mut commands);
+
+        complete_request
+    };
+
+    let response = client.send(request).inspect_err(|e| error!("{e}")).unwrap();
+    for error in &response.error {
+        error!(error);
+    }
+
+    let request = {
+        let mut complete_request = Request::new();
+
+        let request = complete_request.mut_step();
+        request.set_count(1);
 
         complete_request
     };

@@ -28,8 +28,14 @@ use game::{
 
 #[derive(Parser, Clone, Debug, PartialEq, Eq)]
 struct Args {
-    #[arg(short, long = "start-process")]
+    #[arg(long = "start-process")]
     start_process: bool,
+
+    #[arg(long = "step-rate", group = "step-rate", default_value_t = 22)]
+    step_rate: u64,
+
+    #[arg(long, group = "step-rate")]
+    realtime: bool,
 
     #[arg(short, long)]
     map: String,
@@ -46,7 +52,7 @@ fn main() -> Result<(), anyhow::Error> {
     let args = Args::parse();
 
     let core = if args.start_process {
-        CorePlugin::new(StartupMode::Launch, args.map)
+        CorePlugin::new(StartupMode::Launch, args.map, args.realtime)
     } else {
         CorePlugin::new(
             StartupMode::Connect {
@@ -54,6 +60,7 @@ fn main() -> Result<(), anyhow::Error> {
                 port: 8167,
             },
             args.map,
+            args.realtime,
         )
     };
 
@@ -68,8 +75,17 @@ fn main() -> Result<(), anyhow::Error> {
         (move_workers, highlight_workers, draw_move_actions).chain(),
     );
 
-    app.set_runner(|mut app| {
+    app.set_runner(move |mut app| {
+        let step_period = std::time::Duration::from_millis(1000 / args.step_rate);
+        let mut next_step = std::time::Instant::now() + step_period;
+
         loop {
+            if !args.realtime {
+                let now = std::time::Instant::now();
+                std::thread::sleep(next_step.duration_since(now));
+                next_step = now + step_period;
+            }
+
             app.update();
             if let Some(exit) = app.should_exit() {
                 return exit;

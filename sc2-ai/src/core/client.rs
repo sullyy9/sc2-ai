@@ -42,6 +42,7 @@ impl Client {
         map: String,
         player: PlayerSetup,
         opponent: PlayerSetup,
+        realtime: bool,
     ) -> Result<(), anyhow::Error> {
         let request = {
             let mut request = Request::new();
@@ -49,7 +50,7 @@ impl Client {
 
             req_create_game.mut_local_map().set_map_path(map);
             req_create_game.player_setup = vec![player, opponent];
-            req_create_game.set_realtime(true);
+            req_create_game.set_realtime(realtime);
             request
         };
 

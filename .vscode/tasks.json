@@ -15,6 +15,7 @@
             "args": [
                 "run",
                 "--",
+                "--step-rate", "22",
                 "--map", "sc2-ai-cup-2022"
             ]
         },
@@ -31,6 +32,7 @@
                 "run",
                 "--",
                 "--start-process",
+                "--realtime",
                 "--map", "Ladder2019Season3/TritonLE"
             ]
         }
