@@ -63,14 +63,26 @@ impl From<Color> for sc2_proto::debug::Color {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-enum Draw {
-    Text(String, Vec3, Option<Color>, Option<u32>),
-    Line(Line, Option<Color>),
-    Box(Rect, Option<Color>),
-    Sphere(Sphere, Option<Color>),
+struct DrawText {
+    text: String,
+    position: Vec3,
+    color: Option<Color>,
+    size: Option<u32>,
 }
 
-impl From<sc2_proto::debug::DebugText> for Draw {
+impl From<DrawText> for sc2_proto::debug::DebugText {
+    fn from(value: DrawText) -> Self {
+        let mut text = sc2_proto::debug::DebugText::new();
+        text.set_text(value.text);
+        text.world_pos = MessageField(Some(Box::new(value.position.into())));
+        text.color = MessageField(value.color.map(|c| Box::new(c.into())));
+        text.size = value.size;
+
+        text
+    }
+}
+
+impl From<sc2_proto::debug::DebugText> for DrawText {
     fn from(value: sc2_proto::debug::DebugText) -> Self {
         let sc2_proto::debug::DebugText {
             text: Some(text),
@@ -83,11 +95,32 @@ impl From<sc2_proto::debug::DebugText> for Draw {
             panic!("Unexpected None value in sc2_proto::debug::DebugLine");
         };
 
-        Self::Text(text, (*position).into(), color.map(|c| (*c).into()), size)
+        Self {
+            text,
+            position: (*position).into(),
+            color: color.map(|c| (*c).into()),
+            size,
+        }
     }
 }
 
-impl From<sc2_proto::debug::DebugLine> for Draw {
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct DrawLine {
+    line: Line,
+    color: Option<Color>,
+}
+
+impl From<DrawLine> for sc2_proto::debug::DebugLine {
+    fn from(value: DrawLine) -> Self {
+        let mut line = sc2_proto::debug::DebugLine::new();
+        line.line = MessageField(Some(Box::new(value.line.into())));
+        line.color = MessageField(value.color.map(|c| Box::new(c.into())));
+
+        line
+    }
+}
+
+impl From<sc2_proto::debug::DebugLine> for DrawLine {
     fn from(value: sc2_proto::debug::DebugLine) -> Self {
         let sc2_proto::debug::DebugLine {
             line: MessageField(Some(line)),
@@ -98,11 +131,31 @@ impl From<sc2_proto::debug::DebugLine> for Draw {
             panic!("Unexpected None value in sc2_proto::debug::DebugLine");
         };
 
-        Self::Line((*line).into(), color.map(|c| (*c).into()))
+        Self {
+            line: (*line).into(),
+            color: color.map(|c| (*c).into()),
+        }
     }
 }
 
-impl From<sc2_proto::debug::DebugBox> for Draw {
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct DrawBox {
+    rect: Rect,
+    color: Option<Color>,
+}
+
+impl From<DrawBox> for sc2_proto::debug::DebugBox {
+    fn from(value: DrawBox) -> Self {
+        let mut boxx = sc2_proto::debug::DebugBox::new();
+        boxx.min = MessageField(Some(Box::new((*value.rect.min()).into())));
+        boxx.max = MessageField(Some(Box::new((*value.rect.max()).into())));
+        boxx.color = MessageField(value.color.map(|c| Box::new(c.into())));
+
+        boxx
+    }
+}
+
+impl From<sc2_proto::debug::DebugBox> for DrawBox {
     fn from(value: sc2_proto::debug::DebugBox) -> Self {
         let sc2_proto::debug::DebugBox {
             min: MessageField(Some(min)),
@@ -114,49 +167,65 @@ impl From<sc2_proto::debug::DebugBox> for Draw {
             panic!("Unexpected None value in sc2_proto::debug::DebugLine");
         };
 
-        Self::Box(
-            Rect::from_corners((*min).into(), (*max).into()),
-            color.map(|c| (*c).into()),
-        )
+        Self {
+            rect: Rect::from_corners((*min).into(), (*max).into()),
+            color: color.map(|c| (*c).into()),
+        }
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct DrawSphere {
+    sphere: Sphere,
+    color: Option<Color>,
+}
+
+impl From<DrawSphere> for sc2_proto::debug::DebugSphere {
+    fn from(value: DrawSphere) -> Self {
+        let mut sphere = sc2_proto::debug::DebugSphere::new();
+        sphere.p = MessageField(Some(Box::new((*value.sphere.center()).into())));
+        sphere.set_r(value.sphere.radius());
+        sphere.color = MessageField(value.color.map(|c| Box::new(c.into())));
+
+        sphere
+    }
+}
+impl From<sc2_proto::debug::DebugSphere> for DrawSphere {
+    fn from(value: sc2_proto::debug::DebugSphere) -> Self {
+        let sc2_proto::debug::DebugSphere {
+            p: MessageField(Some(point)),
+            r: Some(radius),
+            color: MessageField(color),
+            ..
+        } = value
+        else {
+            panic!("Unexpected None value in sc2_proto::debug::DebugLine");
+        };
+
+        Self {
+            sphere: Sphere::from_center((*point).into(), radius),
+            color: color.map(|c| (*c).into()),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+enum Draw {
+    Text(DrawText),
+    Line(DrawLine),
+    Box(DrawBox),
+    Sphere(DrawSphere),
 }
 
 impl From<Draw> for sc2_proto::debug::DebugDraw {
     fn from(value: Draw) -> Self {
         let mut draw = sc2_proto::debug::DebugDraw::new();
+
         match value {
-            Draw::Line(line, color) => {
-                let mut api_line = sc2_proto::debug::DebugLine::new();
-                api_line.line = MessageField(Some(Box::new(line.into())));
-                api_line.color = MessageField(color.map(|c| Box::new(c.into())));
-
-                draw.lines.push(api_line);
-            }
-            Draw::Box(rect, color) => {
-                let mut api_box = sc2_proto::debug::DebugBox::new();
-                api_box.min = MessageField(Some(Box::new((*rect.min()).into())));
-                api_box.max = MessageField(Some(Box::new((*rect.max()).into())));
-                api_box.color = MessageField(color.map(|c| Box::new(c.into())));
-
-                draw.boxes.push(api_box);
-            }
-            Draw::Text(text, point, color, size) => {
-                let mut api_text = sc2_proto::debug::DebugText::new();
-                api_text.set_text(text);
-                api_text.world_pos = MessageField(Some(Box::new(point.into())));
-                api_text.color = MessageField(color.map(|c| Box::new(c.into())));
-                api_text.size = size;
-
-                draw.text.push(api_text);
-            }
-            Draw::Sphere(sphere, color) => {
-                let mut api_sphere = sc2_proto::debug::DebugSphere::new();
-                api_sphere.p = MessageField(Some(Box::new((*sphere.center()).into())));
-                api_sphere.set_r(sphere.radius());
-                api_sphere.color = MessageField(color.map(|c| Box::new(c.into())));
-
-                draw.spheres.push(api_sphere);
-            }
+            Draw::Line(line) => draw.lines.push(line.into()),
+            Draw::Box(boxx) => draw.boxes.push(boxx.into()),
+            Draw::Text(text) => draw.text.push(text.into()),
+            Draw::Sphere(sphere) => draw.spheres.push(sphere.into()),
         }
 
         draw
@@ -174,7 +243,18 @@ impl From<Draw> for sc2_proto::debug::DebugCommand {
 impl Command for Draw {
     fn apply(self, world: &mut bevy::ecs::world::World) {
         let mut commands = world.resource_mut::<DebugCommands>();
-        commands.push(self.into());
+        if let Some(cmd) = commands.iter_mut().find(|cmd| cmd.has_draw()) {
+            let cmd = cmd.mut_draw();
+
+            match self {
+                Draw::Text(text) => cmd.text.push(text.into()),
+                Draw::Line(line) => cmd.lines.push(line.into()),
+                Draw::Box(boxx) => cmd.boxes.push(boxx.into()),
+                Draw::Sphere(sphere) => cmd.spheres.push(sphere.into()),
+            }
+        } else {
+            commands.push(self.into());
+        }
     }
 }
 
@@ -187,17 +267,31 @@ pub trait DrawCommandsExt {
 
 impl DrawCommandsExt for bevy::ecs::system::Commands<'_, '_> {
     fn draw_text(&mut self, text: impl Into<String>, position: Vec3, color: Color) {
-        self.queue(Draw::Text(text.into(), position, Some(color), Some(12)));
+        self.queue(Draw::Text(DrawText {
+            text: text.into(),
+            position,
+            color: Some(color),
+            size: Some(12),
+        }));
     }
 
     fn draw_line(&mut self, line: Line, color: Color) {
-        self.queue(Draw::Line(line, Some(color)));
+        self.queue(Draw::Line(DrawLine {
+            line,
+            color: Some(color),
+        }));
     }
 
     fn draw_box(&mut self, rect: Rect, color: Color) {
-        self.queue(Draw::Box(rect, Some(color)));
+        self.queue(Draw::Box(DrawBox {
+            rect,
+            color: Some(color),
+        }));
     }
     fn draw_sphere(&mut self, sphere: Sphere, color: Color) {
-        self.queue(Draw::Sphere(sphere, Some(color)));
+        self.queue(Draw::Sphere(DrawSphere {
+            sphere,
+            color: Some(color),
+        }));
     }
 }
