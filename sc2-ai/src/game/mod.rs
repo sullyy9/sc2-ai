@@ -18,7 +18,7 @@ use entity::{
     unit::{OverlordBundle, WorkerBundle},
 };
 use geometry::Vec3;
-use map::{HeightMap, PlacementGrid, map_info_init};
+use map::{HeightMap, PlacementGrid};
 use num_traits::FromPrimitive;
 use tracing::warn;
 
@@ -50,8 +50,6 @@ impl Plugin for GamePlugin {
         schedule_order.insert_before(Update, DataUpdate);
 
         app.init_resource::<EntityIdMap>();
-        app.init_resource::<PlacementGrid>();
-        app.init_resource::<HeightMap>();
 
         app.add_event::<MoveEvent>();
         app.add_event::<EntityFound<MineralPatch>>();
@@ -61,7 +59,8 @@ impl Plugin for GamePlugin {
             DataInit,
             (
                 create_entities,
-                map_info_init,
+                HeightMap::init,
+                PlacementGrid::init,
                 PlacementGrid::entity_found_handler::<MineralPatch>,
                 PlacementGrid::entity_found_handler::<VespeneGeyser>,
             )

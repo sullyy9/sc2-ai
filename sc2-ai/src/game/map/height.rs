@@ -1,7 +1,6 @@
-use bevy::ecs::system::Resource;
-use ndarray::s;
+use bevy::ecs::system::{Commands, Res, ResMut, Resource};
 
-use crate::game::geometry::Vec3;
+use crate::{core::ApiMapInfo, game::geometry::Vec3};
 
 #[derive(Resource, Default, Clone, Debug, PartialEq, Eq)]
 pub struct HeightMap(ndarray::Array2<u8>);
@@ -34,5 +33,17 @@ impl HeightMap {
         self.0
             .get(coords)
             .map(|&z| (((z as f32) * 32.0) / 255.0) - 16.0)
+    }
+}
+
+impl HeightMap {
+    pub fn init(info: Res<ApiMapInfo>, map: Option<ResMut<HeightMap>>, mut commands: Commands) {
+        let new_map = HeightMap::from((*info.terrain_height).clone());
+
+        if let Some(mut map) = map {
+            *map = new_map;
+        } else {
+            commands.insert_resource(new_map);
+        };
     }
 }

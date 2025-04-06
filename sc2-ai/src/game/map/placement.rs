@@ -1,13 +1,16 @@
 use bevy::ecs::{
     entity::Entity,
     event::EventReader,
-    system::{Query, ResMut, Resource},
+    system::{Commands, Query, Res, ResMut, Resource},
 };
 use ndarray::s;
 
-use crate::game::{
-    entity::{EntityFound, MapEntity},
-    geometry::{Cuboid, Vec3},
+use crate::{
+    core::ApiMapInfo,
+    game::{
+        entity::{EntityFound, MapEntity},
+        geometry::{Cuboid, Vec3},
+    },
 };
 
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
@@ -87,7 +90,18 @@ impl PlacementGrid {
     }
 }
 
+/// Bevy systems.
 impl PlacementGrid {
+    pub fn init(map: Res<ApiMapInfo>, grid: Option<ResMut<PlacementGrid>>, mut commands: Commands) {
+        let new_grid = PlacementGrid::from((*map.placement_grid).clone());
+
+        if let Some(mut grid) = grid {
+            *grid = new_grid;
+        } else {
+            commands.insert_resource(new_grid);
+        };
+    }
+
     pub fn entity_found_handler<T>(
         mut events: EventReader<EntityFound<T>>,
         mut grid: ResMut<PlacementGrid>,
