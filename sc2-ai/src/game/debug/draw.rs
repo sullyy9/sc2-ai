@@ -3,7 +3,7 @@ use protobuf::MessageField;
 
 use crate::{
     core::DebugCommands,
-    game::geometry::{Line, Cuboid, Sphere, Vec3},
+    game::geometry::{Cuboid, Line, Sphere, Vec3},
 };
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]

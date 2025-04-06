@@ -21,8 +21,16 @@ impl Cuboid {
         let size_y = size.0.y / 2.0;
         let size_z = size.0.z / 2.0;
 
-        let min = Vec3::new_3d(centre.0.x - size_x, centre.0.y - size_y, centre.0.z - size_z);
-        let max = Vec3::new_3d(centre.0.x + size_x, centre.0.y + size_y, centre.0.z + size_z);
+        let min = Vec3::new_3d(
+            centre.0.x - size_x,
+            centre.0.y - size_y,
+            centre.0.z - size_z,
+        );
+        let max = Vec3::new_3d(
+            centre.0.x + size_x,
+            centre.0.y + size_y,
+            centre.0.z + size_z,
+        );
 
         Self(min, max)
     }
@@ -37,7 +45,11 @@ impl Cuboid {
         let size_y = size.0.y / 2.0;
 
         let min = Vec3::new_3d(centre.0.x - size_x, centre.0.y - size_y, centre.0.z);
-        let max = Vec3::new_3d(centre.0.x + size_x, centre.0.y + size_y, centre.0.z + size.0.z);
+        let max = Vec3::new_3d(
+            centre.0.x + size_x,
+            centre.0.y + size_y,
+            centre.0.z + size.0.z,
+        );
 
         Self(min, max)
     }
