@@ -1,7 +1,14 @@
-use bevy::ecs::system::Resource;
+use bevy::ecs::{
+    entity::Entity,
+    event::EventReader,
+    system::{Query, ResMut, Resource},
+};
 use ndarray::s;
 
-use crate::game::geometry::{Cuboid, Vec3};
+use crate::game::{
+    entity::{EntityFound, MapEntity},
+    geometry::{Cuboid, Vec3},
+};
 
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
 enum GridStatus {
@@ -77,5 +84,33 @@ impl PlacementGrid {
             .slice(s![min_y..max_y, min_x..max_x])
             .iter()
             .all(|&status| status == GridStatus::Empty)
+    }
+}
+
+impl PlacementGrid {
+    pub fn entity_found_handler<T>(
+        mut events: EventReader<EntityFound<T>>,
+        mut grid: ResMut<PlacementGrid>,
+        entities: Query<(Entity, &Vec3)>,
+    ) where
+        T: MapEntity + Send + Sync + 'static,
+    {
+        for event in events.read() {
+            let Ok((_, position)) = entities.get(event.entity) else {
+                continue;
+            };
+
+            // Position is the center of the entities base.
+            let min_y = (position.y - (T::SIZE.y / 2.0)).floor() as usize;
+            let max_y = (position.y + (T::SIZE.y / 2.0)).ceil() as usize;
+
+            let min_x = (position.x - (T::SIZE.x / 2.0)).floor() as usize;
+            let max_x = (position.x + (T::SIZE.x / 2.0)).ceil() as usize;
+
+            grid.0
+                .slice_mut(s![min_y..max_y, min_x..max_x])
+                .iter_mut()
+                .for_each(|cell| *cell = GridStatus::Invalid);
+        }
     }
 }

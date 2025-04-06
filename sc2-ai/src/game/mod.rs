@@ -4,14 +4,17 @@ use action::MoveEvent;
 use bevy::{
     app::{App, MainScheduleOrder, Plugin, Startup, Update},
     ecs::{
-        schedule::ScheduleLabel,
+        schedule::{IntoSystemConfigs, ScheduleLabel},
         system::{Commands, Res, ResMut},
     },
 };
 use entity::{
-    EntityBundle, EntityIdMap, GameId,
+    EntityBundle, EntityFound, EntityIdMap, GameId,
     building::{HatcheryBundle, LarvaBundle},
-    map::{DestructibleRockBundle, MineralPatchBundle, VespeneGeyserBundle},
+    map::{
+        DestructibleRockBundle, MineralPatch, MineralPatchBundle, VespeneGeyser,
+        VespeneGeyserBundle,
+    },
     unit::{OverlordBundle, WorkerBundle},
 };
 use geometry::Vec3;
@@ -51,9 +54,19 @@ impl Plugin for GamePlugin {
         app.init_resource::<HeightMap>();
 
         app.add_event::<MoveEvent>();
+        app.add_event::<EntityFound<MineralPatch>>();
+        app.add_event::<EntityFound<VespeneGeyser>>();
 
-        app.add_systems(DataInit, create_entities);
-        app.add_systems(DataInit, map_info_init);
+        app.add_systems(
+            DataInit,
+            (
+                create_entities,
+                map_info_init,
+                PlacementGrid::entity_found_handler::<MineralPatch>,
+                PlacementGrid::entity_found_handler::<VespeneGeyser>,
+            )
+                .chain(),
+        );
         app.add_systems(DataUpdate, update_entities);
     }
 }
@@ -74,7 +87,10 @@ fn create_entities(
                     unit: EntityBundle::from(unit.clone()),
                     ..Default::default()
                 };
-                commands.spawn(entity)
+
+                let entity = commands.spawn(entity).id();
+                commands.send_event(EntityFound::<MineralPatch>::from(entity));
+                entity
             }
             TypeId::VespeneGeyser
             | TypeId::SpacePlatformGeyser
@@ -86,7 +102,10 @@ fn create_entities(
                     unit: EntityBundle::from(unit.clone()),
                     ..Default::default()
                 };
-                commands.spawn(entity)
+
+                let entity = commands.spawn(entity).id();
+                commands.send_event(EntityFound::<VespeneGeyser>::from(entity));
+                entity
             }
             TypeId::DestructibleCityDebris2x4Vertical
             | TypeId::DestructibleCityDebris2x4Horizontal
@@ -107,7 +126,7 @@ fn create_entities(
                     unit: EntityBundle::from(unit.clone()),
                     ..Default::default()
                 };
-                commands.spawn(entity)
+                commands.spawn(entity).id()
             }
 
             TypeId::Hatchery => {
@@ -115,14 +134,14 @@ fn create_entities(
                     unit: EntityBundle::from(unit.clone()),
                     ..Default::default()
                 };
-                commands.spawn(entity)
+                commands.spawn(entity).id()
             }
             TypeId::Larva => {
                 let entity = LarvaBundle {
                     unit: EntityBundle::from(unit.clone()),
                     ..Default::default()
                 };
-                commands.spawn(entity)
+                commands.spawn(entity).id()
             }
             TypeId::SCV | TypeId::Probe | TypeId::Drone => {
                 let entity = WorkerBundle {
@@ -130,7 +149,7 @@ fn create_entities(
                     ..Default::default()
                 };
 
-                commands.spawn(entity)
+                commands.spawn(entity).id()
             }
             TypeId::Overlord => {
                 let entity = OverlordBundle {
@@ -138,7 +157,7 @@ fn create_entities(
                     ..Default::default()
                 };
 
-                commands.spawn(entity)
+                commands.spawn(entity).id()
             }
 
             _ => {
@@ -147,7 +166,7 @@ fn create_entities(
             }
         };
 
-        map.insert(GameId(unit.tag()), entity.id());
+        map.insert(GameId(unit.tag()), entity);
     }
 }
 

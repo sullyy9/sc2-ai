@@ -3,7 +3,7 @@ pub mod map;
 pub mod unit;
 
 use bevy::{
-    ecs::{bundle::Bundle, component::Component, entity::Entity, system::Resource},
+    ecs::{bundle::Bundle, component::Component, entity::Entity, event::Event, system::Resource},
     utils::HashMap,
 };
 
@@ -49,6 +49,33 @@ impl From<sc2_proto::raw::Unit> for EntityBundle {
         Self {
             id: GameId(value.tag.unwrap()),
             position: Vec3::from(value.pos.unwrap()),
+        }
+    }
+}
+
+pub trait GameEntity: Component {
+    const SIZE: Vec3;
+    const NAME: &'static str;
+}
+
+pub trait MapEntity: GameEntity {}
+pub trait UnitEntity: GameEntity {}
+pub trait BuildingEntity: GameEntity {}
+
+#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EntityFound<T: GameEntity> {
+    pub entity: Entity,
+    tag: T,
+}
+
+impl<T> From<Entity> for EntityFound<T>
+where
+    T: GameEntity + Default,
+{
+    fn from(entity: Entity) -> Self {
+        Self {
+            entity,
+            tag: Default::default(),
         }
     }
 }
