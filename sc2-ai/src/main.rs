@@ -1,8 +1,6 @@
 use bevy::{
     app::{App, Update},
     ecs::{
-        bundle::Bundle,
-        component::Component,
         entity::Entity,
         event::EventReader,
         query::With,
@@ -22,7 +20,13 @@ use game::{
     GamePlugin,
     action::{ActionCommandsExt, MoveEvent},
     debug::{Color, DrawCommandsExt},
-    geometry::{Line, Cuboid, Sphere, Vec3},
+    entity::{
+        MapEntity,
+        map::{MineralPatch, VespeneGeyser},
+        unit::Worker,
+    },
+    geometry::{Cuboid, Line, Vec3},
+    map::PlacementGrid,
 };
 
 #[derive(Parser, Clone, Debug, PartialEq, Eq)]
@@ -74,7 +78,15 @@ fn main() -> Result<(), anyhow::Error> {
 
     app.add_systems(
         Update,
-        (move_workers, highlight_workers, draw_move_actions).chain(),
+        (
+            move_workers,
+            highlight_workers,
+            draw_move_actions,
+            PlacementGrid::draw,
+            MineralPatch::draw_debug_info,
+            VespeneGeyser::draw_debug_info,
+        )
+            .chain(),
     );
 
     app.set_runner(move |mut app| {
