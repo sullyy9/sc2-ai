@@ -8,10 +8,13 @@ use ndarray::s;
 use crate::{
     core::ApiMapInfo,
     game::{
+        debug::{Color, DrawCommandsExt as _},
         entity::{EntityFound, MapEntity},
         geometry::{Cuboid, Vec3},
     },
 };
+
+use super::HeightMap;
 
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
 enum GridStatus {
@@ -125,6 +128,27 @@ impl PlacementGrid {
                 .slice_mut(s![min_y..max_y, min_x..max_x])
                 .iter_mut()
                 .for_each(|cell| *cell = GridStatus::Invalid);
+        }
+    }
+
+    pub fn draw(mut commands: Commands, grid: Res<PlacementGrid>, height_map: Res<HeightMap>) {
+        // Every combination of x and y coordinates.
+        let coords = (0..grid.width()).flat_map(|x| (0..grid.height()).map(move |y| (x, y)));
+
+        let coords = coords
+            .map(|(x, y)| Vec3::new_2d(x as f32, y as f32))
+            .filter(|pos| grid.is_empty(*pos));
+
+        for pos in coords {
+            let height = height_map.height_at(pos).unwrap_or_default();
+
+            commands.draw_box(
+                Cuboid::from_base_center(
+                    pos + Vec3::new_3d(0.5, 0.5, height + 0.05),
+                    Vec3::new_2d(1.0, 1.0),
+                ),
+                Color::GREEN,
+            );
         }
     }
 }
