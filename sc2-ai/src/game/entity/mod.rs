@@ -3,11 +3,21 @@ pub mod map;
 pub mod unit;
 
 use bevy::{
-    ecs::{bundle::Bundle, component::Component, entity::Entity, event::Event, system::Resource},
+    ecs::{
+        bundle::Bundle,
+        component::Component,
+        entity::Entity,
+        event::Event,
+        query::With,
+        system::{Commands, Query, Resource},
+    },
     utils::HashMap,
 };
 
-use super::geometry::Vec3;
+use super::{
+    debug::{Color, DrawCommandsExt as _},
+    geometry::{Cuboid, Vec3},
+};
 
 /// Starcraft 2's identifier for a unit. This differs from the entity's [`Entity`] ID in the ECS.
 #[derive(Component, Default, Clone, Copy, Debug, Hash, PartialEq, Eq)]
@@ -58,7 +68,18 @@ pub trait GameEntity: Component {
     const NAME: &'static str;
 }
 
-pub trait MapEntity: GameEntity {}
+pub trait MapEntity: GameEntity {
+    fn draw_debug_info(mut commands: Commands, query: Query<&Vec3, With<Self>>)
+    where
+        Self: Sized,
+    {
+        for &pos in query.iter() {
+            commands.draw_box(Cuboid::from_base_center(pos, Self::SIZE), Color::BLUE);
+            commands.draw_text(Self::NAME, pos, Color::default());
+        }
+    }
+}
+
 pub trait UnitEntity: GameEntity {}
 pub trait BuildingEntity: GameEntity {}
 
