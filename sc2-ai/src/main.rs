@@ -30,6 +30,9 @@ struct Args {
     #[arg(long = "start-process")]
     start_process: bool,
 
+    #[arg(long, default_value_t = 8167)]
+    port: u16,
+
     #[arg(long = "step-rate", group = "step-rate", default_value_t = 22)]
     step_rate: u64,
 
@@ -56,7 +59,7 @@ fn main() -> Result<(), anyhow::Error> {
         CorePlugin::new(
             StartupMode::Connect {
                 addr: Ipv4Addr::new(127, 0, 0, 1),
-                port: 8167,
+                port: args.port,
             },
             args.map,
             args.realtime,
