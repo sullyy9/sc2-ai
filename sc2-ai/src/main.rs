@@ -1,3 +1,5 @@
+use std::net::Ipv4Addr;
+
 use bevy::{
     app::{App, Update},
     ecs::{
@@ -10,11 +12,11 @@ use bevy::{
 };
 use clap::Parser;
 use core::{CorePlugin, StartupMode};
-use std::net::Ipv4Addr;
-use tracing::{info, warn};
+use tracing::{info, level_filters::LevelFilter, warn};
 
 mod core;
 mod game;
+mod webview;
 
 use game::{
     GamePlugin,
@@ -28,6 +30,7 @@ use game::{
     geometry::{Cuboid, Line, Vec3},
     map::PlacementGrid,
 };
+use webview::WebViewPlugin;
 
 #[derive(Parser, Clone, Debug, PartialEq, Eq)]
 struct Args {
@@ -53,6 +56,7 @@ fn main() -> Result<(), anyhow::Error> {
         .with_file(true)
         .with_line_number(true)
         .with_target(false)
+        .with_max_level(LevelFilter::DEBUG)
         .init();
 
     let args = Args::parse();
@@ -74,7 +78,9 @@ fn main() -> Result<(), anyhow::Error> {
 
     let mut app = App::new();
 
-    app.add_plugins(core).add_plugins(GamePlugin);
+    app.add_plugins(core)
+        .add_plugins(GamePlugin)
+        .add_plugins(WebViewPlugin);
 
     app.add_systems(
         Update,
@@ -95,9 +101,8 @@ fn main() -> Result<(), anyhow::Error> {
 
         loop {
             if !args.realtime {
-                let now = std::time::Instant::now();
-                std::thread::sleep(next_step.duration_since(now));
-                next_step = now + step_period;
+                std::thread::sleep(next_step.duration_since(std::time::Instant::now()));
+                next_step = std::time::Instant::now() + step_period;
             }
 
             app.update();

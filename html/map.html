@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html>
+
+<style>
+    html,
+    body {
+        margin: 0px;
+        padding: 0px;
+        overflow: hidden;
+    }
+
+    #mouse {
+        position: absolute;
+        top: 0px;
+        left: 0px;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: transparent;
+    }
+
+    .rect {
+        clip-path: inset(0 0 0 0 round 10%);
+    }
+
+    .circle {
+        clip-path: inset(0 0 0 0 round 50%);
+    }
+
+    .select {
+        fill: orange;
+        stroke: orange;
+        stroke-width: 0.2;
+    }
+
+    .wip {
+        filter: grayscale(40%);
+        opacity: 0.7;
+    }
+
+    .cloak {
+        opacity: 0.5;
+    }
+</style>
+
+<body>
+    <svg id="map" width="100" height="100" viewBox="0 0 0 0" preserveAspectRatio="none"
+        xmlns="http://www.w3.org/2000/svg">
+        <rect x="-1000" y="-1000" width="2000" height="2000" fill="black" />
+        <g id="pathing" style="stroke: none"></g>
+        <g id="placement" style="stroke: none"></g>
+        <g id="creep"></g>
+        <g id="shapes" opacity="0.2"></g>
+        <g id="grid" style="stroke: black; stroke-width: 0.02; fill: none;"></g>
+        <g id="zonelines" style="stroke: darkgoldenrod; stroke-width: 0.4; fill: none;"></g>
+        <g id="zonetexts" style="fill: darkgoldenrod; font-size: 8"></g>
+        <g id="orders" style="stroke-width: 0.4"></g>
+        <g id="units"></g>
+        <g id="fog"></g>
+        <g id="focus" style="stroke: gold; stroke-width: 0.8; fill: none"></g>
+    </svg>
+    <div id="mouse" />
+</body>
+
+<script>
+    const OWNER_COLOR = ["white", "blue", "red"];
+    const ZONE_COLS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+
+    const map = document.getElementById("map");
+    const layerCreep = document.getElementById("creep");
+    const layerFocus = document.getElementById("focus");
+    const layerFog = document.getElementById("fog");
+    const layerGrid = document.getElementById("grid");
+    const layerOrders = document.getElementById("orders");
+    const layerPathing = document.getElementById("pathing");
+    const layerPlacement = document.getElementById("placement");
+    const layerShapes = document.getElementById("shapes");
+    const layerUnits = document.getElementById("units");
+    const layerMouse = document.getElementById("mouse");
+    // const vscode = acquireVsCodeApi();
+    const socket = new WebSocket("/socket");
+
+    let focus = null;
+    let grid = null;
+    let iconspath = null;
+    let mapbox = null;
+    let viewbox = null;
+
+    let lastKeyCode = null;
+    let lastKeyDown = false;
+    let lastKeyHold = false;
+
+    function reset() {
+        focus = null;
+        grid = null;
+        viewbox = null;
+
+        map.setAttribute("viewBox", "0 0 0 0");
+
+        layerCreep.replaceChildren();
+        layerFocus.replaceChildren();
+        layerFog.replaceChildren();
+        layerGrid.replaceChildren();
+        layerOrders.replaceChildren();
+        layerPathing.replaceChildren();
+        layerPlacement.replaceChildren();
+        layerShapes.replaceChildren();
+        layerUnits.replaceChildren();
+    }
+
+    function setIconsPath(path) {
+        iconspath = path;
+    }
+
+    function render(data) {
+        // Remember focus, grid, mapbox and viewbox because they don't come every time
+        if (data.focus) focus = data.focus;
+        if (data.grid) grid = data.grid;
+        if (data.mapbox) mapbox = data.mapbox;
+        if (data.viewbox) viewbox = data.viewbox;
+
+        if (viewbox) {
+            const minx = Math.floor(Math.max(mapbox.minx, viewbox.left));
+            const maxx = Math.ceil(Math.min(mapbox.maxx, viewbox.left + viewbox.width));
+            const miny = Math.floor(Math.max(mapbox.miny, viewbox.top));
+            const maxy = Math.ceil(Math.min(mapbox.maxy, viewbox.top + viewbox.height));
+            const isFullView = (minx <= mapbox.minx) && (miny <= mapbox.miny) && (maxx >= mapbox.maxx) && (maxy >= mapbox.maxy);
+
+            renderFocus(focus);
+
+            if (grid) renderCells(layerPlacement, grid.placement, minx, maxx, miny, maxy, "#CCCCCC", 1.0);
+            if (grid) renderCells(layerPathing, grid.pathing, minx, maxx, miny, maxy, "#AAAAAA", 1.0);
+            if (data.creep) renderCells(layerCreep, data.creep, minx, maxx, miny, maxy, "purple", 0.5);
+            if (data.fog) renderCells(layerFog, data.fog, minx, maxx, miny, maxy, "black", 0.2, (shade) => (2 - shade) / 2);
+            if (data.showZones) renderZones(isFullView);
+            if (data.shapes) renderShapes(data.shapes);
+            if (data.units) renderUnits(data.units, isFullView, data.focus ? data.focus.tag : null);
+            if (data.units) renderOrders(data.units, isFullView);
+
+            map.setAttribute("viewBox", [viewbox.left, viewbox.top, viewbox.width, viewbox.height].join(" "));
+        }
+
+        socket.send(JSON.stringify({ event: "ready" }));
+    }
+
+    function renderGrid() {
+        const lines = [];
+
+        for (let x = 0; x < 250; x++) {
+            lines.push(`<line x1="${x}" y1="0" x2="${x}" y2="${250}" />`);
+        }
+        for (let y = 0; y < 250; y++) {
+            lines.push(`<line x1="0" y1="${y}" x2="${250}" y2="${y}" />`);
+        }
+
+        layerGrid.innerHTML = lines.join("");
+    }
+
+    function renderFocus(focus) {
+        if (focus && focus.width && focus.height) {
+            const x = focus.x - focus.width / 2 - 1;
+            const y = focus.y - focus.height / 2 - 1;
+            const width = focus.width + 2;
+            const height = focus.height + 2;
+
+            layerFocus.innerHTML = `<rect x="${x}" y="${y}" width="${width}" height="${height}" />`;
+        }
+    }
+
+    function renderOrders(units, isFullView) {
+        if (isFullView) {
+            layerOrders.innerHTML = "";
+        } else {
+            const svg = [];
+
+            for (const unit of units) {
+                if (unit.order && unit.order.x && unit.order.y) {
+                    const color = OWNER_COLOR[unit.owner] || "white";
+
+                    const order = unit.order;
+                    const distance = Math.abs(unit.x - order.x) + Math.abs(unit.y - order.y);
+                    const opacity = Math.max(1 - distance / 50, 0.1);
+                    svg.push(`<line x1="${unit.x}" y1="${unit.y}" x2="${order.x}" y2="${order.y}" stroke="${color}" stroke-width="0.4" stroke-opacity="${opacity}" />`);
+                }
+            }
+
+            layerOrders.innerHTML = svg.join("");
+        }
+    }
+
+    function renderShapes(shapes) {
+        const svg = [];
+
+        for (const one of shapes) {
+            switch (one.shape) {
+                case "circle": {
+                    svg.push(`<circle cx="${one.x}" cy="${one.y}" r="${one.r}" fill="${one.color || 'gold'}" />`);
+                    break;
+                }
+                case "line": {
+                    svg.push(`<line x1="${one.x1}" y1="${one.y1}" x2="${one.x2}" y2="${one.y2}" stroke-with="${one.width || 1}" stroke="${one.color || 'gold'}" />`);
+                    break;
+                }
+                case "polygon": {
+                    const points = [];
+
+                    for (let i = 0; i < one.points.length; i += 2) {
+                        points.push(`${one.points[i]},${one.points[i + 1]}`);
+                    }
+
+                    svg.push(`<polygon points="${points.join(' ')}" fill="${one.color || 'gold'}" />`);
+                    break;
+                }
+            }
+        }
+
+        layerShapes.innerHTML = svg.join("");
+    }
+
+    function renderUnits(units, isFullView, selectedUnitTag) {
+        const svg = [];
+
+        if (!isFullView) {
+            for (const unit of units) {
+                const color = OWNER_COLOR[unit.owner] || "white";
+
+                if (unit.order) {
+                    const order = unit.order;
+                    const distance = Math.abs(unit.x - order.x) + Math.abs(unit.y - order.y);
+                    const opacity = Math.max(1 - distance / 50, 0.1);
+                    svg.push(`<line x1="${unit.x}" y1="${unit.y}" x2="${order.x}" y2="${order.y}" stroke="${color}" stroke-width="0.4" stroke-opacity="${opacity}" />`);
+                }
+            }
+        }
+
+        for (const unit of units) {
+            const color = OWNER_COLOR[unit.owner] || "white";
+
+            if (isFullView) {
+                renderLowDefinitionUnitRendering(svg, unit, color);
+            } else {
+                getHighDefinitionUnitRendering(svg, unit, color, (unit.tag === selectedUnitTag));
+            }
+        }
+
+        layerUnits.innerHTML = svg.join("");
+    }
+
+    function renderZones(isFullView) {
+        if (isFullView) {
+            const lines = [];
+            const texts = [];
+            const stepx = viewbox.width / 10;
+            const maxx = viewbox.left + viewbox.width;
+            const stepy = viewbox.height / 10;
+            const maxy = viewbox.top + viewbox.height;
+
+            for (let x = viewbox.left, i = 0; x < maxx; x += stepx, i++) {
+                lines.push(`<line x1="${x + stepx}" y1="0" x2="${x + stepx}" y2="${maxy}" />`);
+                texts.push(`<text x="${x + stepx * 0.5}" y="${viewbox.top + stepy * 0.5}">${ZONE_COLS[i]}</text>`);
+            }
+            for (let y = viewbox.top, i = 0; y < maxy; y += stepy, i++) {
+                lines.push(`<line x1="0" y1="${y + stepy}" x2="${maxx}" y2="${y + stepy}" />`);
+                texts.push(`<text x="${viewbox.left + stepx * 0.1}" y="${y + stepy * 0.8}">${i}</text>`);
+            }
+
+            document.getElementById("zonelines").innerHTML = lines.join("");
+            document.getElementById("zonetexts").innerHTML = texts.join("");
+        } else {
+            document.getElementById("zonelines").innerHTML = "";
+            document.getElementById("zonetexts").innerHTML = "";
+        }
+    }
+
+    function renderCells(layer, cells, minx, maxx, miny, maxy, color, opacity, transform) {
+        const svg = [];
+
+        for (let y = miny; y <= maxy; y++) {
+            let drawing = false;
+            let drawstart;
+            let drawshade;
+
+            for (let x = minx; x <= maxx; x++) {
+                let shade = getCellShade(cells, x, y);
+
+                if (transform) {
+                    shade = transform(shade);
+                }
+
+                if (shade) {
+                    if (drawing) {
+                        if (shade !== drawshade) {
+                            svg.push(`<rect x="${drawstart}" y=${y} width="${x - drawstart}" height="1" fill="${color}" opacity="${opacity * drawshade}" />`);
+                            drawstart = x;
+                            drawshade = shade;
+                        } else if (x === maxx) {
+                            svg.push(`<rect x="${drawstart}" y=${y} width="${x - drawstart + 1}" height="1" fill="${color}" opacity="${opacity * drawshade}" />`);
+                        }
+                    } else {
+                        drawing = true;
+                        drawstart = x;
+                        drawshade = shade;
+                    }
+                } else if (drawing) {
+                    svg.push(`<rect x="${drawstart}" y=${y} width="${x - drawstart}" height="1" fill="${color}" opacity="${opacity * drawshade}" />`);
+                    drawing = false;
+                }
+            }
+        }
+
+        layer.innerHTML = svg.join("");
+    }
+
+    function getCellShade(cells, x, y) {
+        if (!cells) return;
+        if ((x < 0) || (x > cells.size.x)) return;
+        if ((y < 0) || (y > cells.size.y)) return;
+
+        const index = x + y * cells.size.x;
+
+        switch (cells.bitsPerPixel) {
+            case 1: {
+                const pos = 7 - index % 8;
+                const mask = 1 << pos;
+                const bit = Math.floor(index / 8);
+
+                return (cells.data[bit] & mask) ? 1 : 0;
+            }
+            case 8: {
+                return cells.data[index];
+            }
+        }
+    }
+
+    function getUnitDimensions(unit) {
+        if (unit.type.kind === 2) {
+            // Mineral field
+            return { x: unit.x - 1, y: unit.y - 0.5, width: 2, height: 1, shape: "rect" };
+        } else if (unit.type.kind === 3) {
+            // Vespene geyser
+            return { x: unit.x - 1.5, y: unit.y - 1.5, width: 3, height: 3, shape: "rect" };
+        } else if ((unit.owner !== 1) && (unit.owner !== 2)) {
+            // Obstacle
+            return { x: unit.x - 0.5, y: unit.y - 0.5, width: 1, height: 1, shape: "rect" };
+        } else if (unit.type.kind === 1) {
+            // Building
+            const size = Math.floor(unit.r + unit.r);
+            const radius = size / 2;
+
+            return { x: unit.x - radius, y: unit.y - radius, width: size, height: size, shape: "rect" };
+        } else {
+            // Unit
+            return { x: unit.x - unit.r, y: unit.y - unit.r, width: unit.r + unit.r, height: unit.r + unit.r, shape: "circle" };
+        }
+    }
+
+    function renderLowDefinitionUnitRendering(svg, unit, color) {
+        const { x, y, width, height } = getUnitDimensions(unit);
+
+        svg.push(`<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="${color}" />`);
+    }
+
+    function getHighDefinitionUnitRendering(svg, unit, color, isSelected) {
+        const { x, y, width, height, shape } = getUnitDimensions(unit);
+        const wip = unit.wip ? "wip" : "";
+        const cloak = unit.cloak ? "cloak" : "";
+        const select = isSelected ? "select" : "";
+
+        svg.push(`<rect class="${shape} ${select} ${wip} ${cloak}" x="${x}" y="${y}" width="${width}" height="${height}" fill="${color}" />`);
+
+        if (iconspath && unit.type.alias) {
+            const href = iconspath + unit.type.alias + ".webp";
+
+            svg.push(`<image class="${shape} ${wip} ${cloak}" x="${x}" y="${y}" width="${width * 0.95}" height="${height * 0.95}" href="${href}" />`);
+        }
+
+        if (unit.progress < 1) {
+            svg.push(`<rect class="${shape}" x="${x}" y="${y}" width="${width * 0.95}" height="${height * 0.95 * (1 - unit.progress)}" fill="#555555" opacity="0.8" />`);
+        }
+
+        if (iconspath && unit.product) {
+            const href = iconspath + unit.product.type + ".webp";
+
+            svg.push(`<image x="${x + 0.2}" y="${y + 0.2}" width="1" height="1" href="${href}" />`);
+            svg.push(`<rect x="${x + 0.2}" y="${y + 0.2}" width="1" height="${1 - unit.product.progress}" fill="#555555" opacity="0.8" />`);
+        }
+    }
+
+    window.addEventListener("resize", function (event) {
+        map.setAttribute("width", window.innerWidth);
+        map.setAttribute("height", window.innerHeight);
+
+        socket.send(JSON.stringify({ event: "resize", width: window.innerWidth, height: window.innerHeight }));
+    }, true);
+
+    window.addEventListener("message", function ({ data }) {
+        switch (data.type) {
+            case "focus": return renderFocus(data.focus);
+            case "icons": return setIconsPath(data.path);
+            case "render": return render(data.data);
+            case "reset": return reset();
+        }
+    });
+
+    const IS_ARROW_KEY = { ArrowLeft: true, ArrowRight: true, ArrowUp: true, ArrowDown: true };
+    window.addEventListener("keydown", function (event) {
+        const isHold = lastKeyDown && (event.code === lastKeyCode);
+        if (event.code === "Space") {
+            socket.send(JSON.stringify({ event: "pause" }));
+        } else if (isHold && IS_ARROW_KEY[event.code]) {
+            scroll(event.code, 1);
+        }
+        lastKeyCode = event.code;
+        lastKeyDown = true;
+        lastKeyHold = isHold;
+    });
+    window.addEventListener("keyup", function (event) {
+        if (lastKeyDown && !lastKeyHold && (event.code === lastKeyCode) && IS_ARROW_KEY[event.code]) {
+            scroll(event.code, 12);
+        }
+        lastKeyCode = event.code;
+        lastKeyDown = false;
+        lastKeyHold = false;
+    });
+    function scroll(arrow, step) {
+        if (!focus) {
+            // Can't scroll without focus
+        } else if (arrow === "ArrowLeft") {
+            socket.send(JSON.stringify({ event: "scroll", x: focus.x - step, y: focus.y }));
+        } else if (arrow === "ArrowUp") {
+            socket.send(JSON.stringify({ event: "scroll", x: focus.x, y: focus.y - step }));
+        } else if (arrow === "ArrowRight") {
+            socket.send(JSON.stringify({ event: "scroll", x: focus.x + step, y: focus.y }));
+        } else if (arrow === "ArrowDown") {
+            socket.send(JSON.stringify({ event: "scroll", x: focus.x, y: focus.y + step }));
+        }
+    }
+
+    window.addEventListener("wheel", function (event) {
+        if (viewbox) {
+            socket.send(JSON.stringify({
+                event: "wheel",
+                delta: event.deltaY,
+                x: viewbox.left + event.offsetX * viewbox.width / window.innerWidth,
+                y: viewbox.top + event.offsetY * viewbox.height / window.innerHeight,
+            }));
+        }
+    });
+
+    layerMouse.addEventListener("click", function (event) {
+        if (viewbox) {
+            socket.send(JSON.stringify({
+                event: "click",
+                x: viewbox.left + event.offsetX * viewbox.width / window.innerWidth,
+                y: viewbox.top + event.offsetY * viewbox.height / window.innerHeight,
+            }));
+        }
+    });
+
+    renderGrid();
+    map.setAttribute("width", window.innerWidth);
+    map.setAttribute("height", window.innerHeight);
+
+    socket.onopen = () => socket.send(JSON.stringify({ event: "resize", width: window.innerWidth, height: window.innerHeight }));
+</script>
+
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+
+<style>
+    span {
+        display: block;
+        cursor: pointer;
+    }
+
+    span:hover {
+        font-weight: bold;
+    }
+</style>
+
+<body>
+    <div id="actions"></div>
+</body>
+
+<script>
+    const vscode = acquireVsCodeApi();
+
+    function showActions(actions) {
+        const list = [];
+
+        for (const action of actions) {
+            list.push("<span id='", action.unit, "'>", action.text, "</span>");
+        }
+
+        document.getElementById("actions").innerHTML = list.join("");
+    }
+
+    window.addEventListener("message", function ({ data }) {
+        switch (data.type) {
+            case "actions": return showActions(data.actions);
+        }
+    });
+
+    window.addEventListener("click", function (event) {
+        vscode.postMessage({ event: "click", unit: event.target.getAttribute("id") });
+    });
+
+</script>
+
+</html>
