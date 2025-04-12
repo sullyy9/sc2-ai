@@ -239,12 +239,6 @@ fn send_request(
     mut actions: ResMut<Actions>,
     mut commands: ResMut<DebugCommands>,
 ) {
-    tracing::info!(
-        "Sending Request | actions: {} | commands: {}",
-        actions.len(),
-        commands.len()
-    );
-
     let request = {
         let mut complete_request = Request::new();
 
