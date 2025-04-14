@@ -1,4 +1,7 @@
-use bevy::ecs::component::Component;
+use bevy::{
+    ecs::component::Component,
+    math::{FloatPow, NormedVectorSpace},
+};
 use duplicate::duplicate_item;
 
 #[derive(Component, Default, Clone, Copy, Debug, PartialEq)]
@@ -11,6 +14,25 @@ impl Vec3 {
 
     pub const fn new_2d(x: f32, y: f32) -> Self {
         Self(bevy::math::Vec3::new(x, y, 0.0))
+    }
+
+    pub fn midpoint<I>(points: I) -> Self
+    where
+        I: IntoIterator<Item = Self>,
+    {
+        let (count, point) = points
+            .into_iter()
+            .fold((0, Vec3::default()), |(i, acc), point| (i + 1, acc + point));
+
+        point / count as f32
+    }
+
+    pub fn euclidean_norm(&self) -> f32 {
+        self.norm()
+    }
+
+    pub fn euclidean_norm_squared(&self) -> f32 {
+        self.norm_squared()
     }
 }
 
@@ -118,5 +140,31 @@ impl Vec3 {
 
     pub fn distance(&self, other: Self) -> f32 {
         self.0.distance(other.0)
+    }
+}
+
+#[duplicate_item(
+    Lhs       Rhs;
+    [ Vec3  ] [ f32  ];
+    [ Vec3  ] [ &f32 ];
+    [ &Vec3 ] [ f32  ];
+    [ &Vec3 ] [ &f32 ];
+)]
+impl std::ops::Div<Rhs> for Lhs {
+    type Output = Vec3;
+
+    fn div(self, rhs: Rhs) -> Vec3 {
+        Vec3(self.0.div(rhs))
+    }
+}
+
+#[duplicate_item(
+    Lhs       Rhs;
+    [ Vec3  ] [ f32  ];
+    [ Vec3  ] [ &f32 ];
+)]
+impl std::ops::DivAssign<Rhs> for Lhs {
+    fn div_assign(&mut self, rhs: Rhs) {
+        self.0.div_assign(rhs);
     }
 }

@@ -61,4 +61,45 @@ impl Cuboid {
     pub const fn max(&self) -> &Vec3 {
         &self.1
     }
+
+    pub const fn center(&self) -> Vec3 {
+        let min = self.0;
+        let max = self.1;
+
+        let x = (min.0.x + max.0.x) / 2.0;
+        let y = (min.0.y + max.0.y) / 2.0;
+        let z = (min.0.z + max.0.z) / 2.0;
+
+        Vec3::new_3d(x, y, z)
+    }
+
+    pub fn overlaps(&self, other: &Self) -> bool {
+        (self.max().x > other.min().x)
+            && (self.min().x < other.max().x)
+            && (self.max().y > other.min().y)
+            && (self.min().y < other.max().y)
+            && (self.max().z > other.min().z)
+            && (self.min().z < other.max().z)
+    }
+
+    pub fn overlaps_2d(&self, other: &Self) -> bool {
+        (self.max().x > other.min().x)
+            && (self.min().x < other.max().x)
+            && (self.max().y > other.min().y)
+            && (self.min().y < other.max().y)
+    }
+
+    pub fn min_distance_2d(&self, other: &Self) -> f32 {
+        f32::sqrt(self.min_distance_squared_2d(other))
+    }
+
+    pub fn min_distance_squared_2d(&self, other: &Self) -> f32 {
+        let u = self.min() - other.max();
+        let u = Vec3::new_2d(f32::max(0.0, u.x), f32::max(0.0, u.y));
+
+        let v = other.min() - self.max();
+        let v = Vec3::new_2d(f32::max(0.0, v.x), f32::max(0.0, v.y));
+
+        u.euclidean_norm_squared() + v.euclidean_norm_squared()
+    }
 }
