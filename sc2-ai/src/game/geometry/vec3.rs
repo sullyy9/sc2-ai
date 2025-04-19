@@ -1,19 +1,40 @@
-use bevy::{
-    ecs::component::Component,
-    math::{FloatPow, NormedVectorSpace},
-};
+use bevy::{ecs::component::Component, math::NormedVectorSpace};
 use duplicate::duplicate_item;
+
+use super::vec2::Vec2;
 
 #[derive(Component, Default, Clone, Copy, Debug, PartialEq)]
 pub struct Vec3(pub(super) bevy::math::Vec3);
 
 impl Vec3 {
-    pub const fn new_3d(x: f32, y: f32, z: f32) -> Self {
+    pub const fn new(x: f32, y: f32, z: f32) -> Self {
         Self(bevy::math::Vec3::new(x, y, z))
     }
 
-    pub const fn new_2d(x: f32, y: f32) -> Self {
-        Self(bevy::math::Vec3::new(x, y, 0.0))
+    pub const fn from_vec2(vec: Vec2, z: f32) -> Self {
+        Self(bevy::math::Vec3::new(vec.0.x, vec.0.y, z))
+    }
+
+    pub fn with_x(mut self, x: f32) -> Self {
+        self.0.x = x;
+        self
+    }
+
+    pub fn with_y(mut self, y: f32) -> Self {
+        self.0.y = y;
+        self
+    }
+
+    pub fn with_z(mut self, z: f32) -> Self {
+        self.0.z = z;
+        self
+    }
+
+    pub const fn without_z(self) -> Vec2 {
+        Vec2(bevy::math::Vec2 {
+            x: self.0.x,
+            y: self.0.y,
+        })
     }
 
     pub fn midpoint<I>(points: I) -> Self
@@ -52,18 +73,9 @@ impl From<Vec3> for sc2_proto::common::Point {
     }
 }
 
-impl From<sc2_proto::common::Point2D> for Vec3 {
-    fn from(value: sc2_proto::common::Point2D) -> Self {
-        Self(bevy::math::Vec3::new(value.x(), value.y(), 0.0))
-    }
-}
-
-impl From<Vec3> for sc2_proto::common::Point2D {
-    fn from(value: Vec3) -> Self {
-        let mut point = sc2_proto::common::Point2D::new();
-        point.set_x(value.0.x);
-        point.set_y(value.0.y);
-        point
+impl From<(f32, f32, f32)> for Vec3 {
+    fn from((x, y, z): (f32, f32, f32)) -> Self {
+        Self::new(x, y, z)
     }
 }
 

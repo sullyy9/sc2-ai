@@ -5,17 +5,17 @@ use rust_sc2::ids::AbilityId;
 
 use crate::core::Actions;
 
-use super::{entity::GameId, geometry::Vec3};
+use super::{entity::GameId, geometry::Vec2};
 
 struct MoveCommand {
     units: Box<[Entity]>,
-    destination: Vec3,
+    destination: Vec2,
 }
 
 #[derive(Event, Default, Clone, Debug, PartialEq)]
 pub struct MoveEvent {
     units: Box<[Entity]>,
-    destination: Vec3,
+    destination: Vec2,
 }
 
 impl MoveEvent {
@@ -23,7 +23,7 @@ impl MoveEvent {
         &self.units
     }
 
-    pub fn destination(&self) -> &Vec3 {
+    pub fn destination(&self) -> &Vec2 {
         &self.destination
     }
 }
@@ -59,18 +59,18 @@ pub trait ActionCommandsExt {
     /// Request that a collection of units move to a location.
     ///
     /// Dispatches a [`MoveEvent`].
-    fn move_units(&mut self, units: &[Entity], destination: Vec3);
+    fn move_units(&mut self, units: &[Entity], destination: Vec2);
 
     /// Request that a single unit move to a location.
     ///
     /// Dispatches a [`MoveEvent`].
-    fn move_unit(&mut self, unit: Entity, destination: Vec3) {
+    fn move_unit(&mut self, unit: Entity, destination: Vec2) {
         self.move_units(&[unit], destination);
     }
 }
 
 impl ActionCommandsExt for bevy::ecs::system::Commands<'_, '_> {
-    fn move_units(&mut self, units: &[Entity], destination: Vec3) {
+    fn move_units(&mut self, units: &[Entity], destination: Vec2) {
         let units: Box<[_]> = Box::from(units);
 
         self.queue(MoveCommand {

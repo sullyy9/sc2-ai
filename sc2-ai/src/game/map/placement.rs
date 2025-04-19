@@ -10,11 +10,9 @@ use crate::{
     game::{
         debug::{Color, DrawCommandsExt as _},
         entity::{EntityFound, MapEntity},
-        geometry::{Cuboid, Vec3},
+        geometry::{Rect, Vec2, Vec3},
     },
 };
-
-use super::HeightMap;
 
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
 enum GridStatus {
@@ -65,7 +63,7 @@ impl PlacementGrid {
     }
 
     /// Determine if a single grid space is empty and an entity can be placed there.
-    pub fn is_empty(&self, point: Vec3) -> bool {
+    pub fn is_empty(&self, point: Vec2) -> bool {
         let coords = (point.y.floor() as usize, point.x.floor() as usize);
         self.0
             .get(coords)
@@ -73,7 +71,7 @@ impl PlacementGrid {
     }
 
     /// Determine if a single grid space is an invalid placement location.
-    pub fn is_invalid(&self, point: Vec3) -> bool {
+    pub fn is_invalid(&self, point: Vec2) -> bool {
         let coords = (point.y.floor() as usize, point.x.floor() as usize);
         !self
             .0
@@ -82,7 +80,7 @@ impl PlacementGrid {
     }
 
     /// Determine if a grid area is empty and an entity can be placed there.
-    pub fn is_area_empty(&self, rect: Cuboid) -> bool {
+    pub fn is_area_empty(&self, rect: Rect) -> bool {
         let (min_x, min_y) = (rect.min().x.floor() as usize, rect.min().y.floor() as usize);
         let (max_x, max_y) = (rect.max().x.floor() as usize, rect.max().y.floor() as usize);
 
@@ -131,22 +129,17 @@ impl PlacementGrid {
         }
     }
 
-    pub fn draw(mut commands: Commands, grid: Res<PlacementGrid>, height_map: Res<HeightMap>) {
+    pub fn draw(mut commands: Commands, grid: Res<PlacementGrid>) {
         // Every combination of x and y coordinates.
         let coords = (0..grid.width()).flat_map(|x| (0..grid.height()).map(move |y| (x, y)));
 
         let coords = coords
-            .map(|(x, y)| Vec3::new_2d(x as f32, y as f32))
+            .map(|(x, y)| Vec2::new(x as f32, y as f32))
             .filter(|pos| grid.is_empty(*pos));
 
         for pos in coords {
-            let height = height_map.height_at(pos).unwrap_or_default();
-
-            commands.draw_box(
-                Cuboid::from_base_center(
-                    pos + Vec3::new_3d(0.5, 0.5, height + 0.05),
-                    Vec3::new_2d(1.0, 1.0),
-                ),
+            commands.draw_surface_rect(
+                Rect::from_center(pos + Vec2::new(0.5, 0.5), Vec2::new(1.0, 1.0)),
                 Color::GREEN,
             );
         }

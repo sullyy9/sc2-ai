@@ -16,7 +16,7 @@ use bevy::{
 
 use super::{
     debug::{Color, DrawCommandsExt as _},
-    geometry::{Cuboid, Vec3},
+    geometry::{Rect, Vec2, Vec3},
 };
 
 /// Starcraft 2's identifier for a unit. This differs from the entity's [`Entity`] ID in the ECS.
@@ -64,6 +64,7 @@ impl From<sc2_proto::raw::Unit> for EntityBundle {
 }
 
 pub trait GameEntity: Component {
+    const FOOTPRINT: Vec2;
     const SIZE: Vec3;
     const NAME: &'static str;
 }
@@ -74,7 +75,11 @@ pub trait MapEntity: GameEntity {
         Self: Sized,
     {
         for &pos in query.iter() {
-            commands.draw_box(Cuboid::from_base_center(pos, Self::SIZE), Color::BLUE);
+            commands.draw_surface_box(
+                Rect::from_center(pos.without_z(), Self::FOOTPRINT),
+                Self::SIZE.z,
+                Color::BLUE,
+            );
             commands.draw_text(Self::NAME, pos, Color::default());
         }
     }

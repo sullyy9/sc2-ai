@@ -25,7 +25,7 @@ use game::{
         map::{MineralPatch, VespeneGeyser},
         unit::Worker,
     },
-    geometry::{Cuboid, Line, Vec3},
+    geometry::{Cuboid, Line2, Vec2, Vec3},
     map::PlacementGrid,
 };
 
@@ -115,7 +115,7 @@ fn main() -> Result<(), anyhow::Error> {
 
 fn move_workers(mut commands: Commands, query: Query<Entity, With<Worker>>) {
     let workers = query.iter().collect::<Box<_>>();
-    commands.move_units(&workers, Vec3::new_2d(100.0, 100.0));
+    commands.move_units(&workers, Vec2::new(100.0, 100.0));
 }
 
 fn highlight_workers(mut commands: Commands, query: Query<&Vec3, With<Worker>>) {
@@ -141,7 +141,10 @@ fn draw_move_actions(
                 continue;
             };
 
-            commands.draw_line(Line::new(position, destination), Color::default());
+            commands.draw_surface_line(
+                Line2::new(position.without_z(), destination),
+                Color::default(),
+            );
         }
     }
 }

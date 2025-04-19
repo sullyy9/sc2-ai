@@ -1,6 +1,6 @@
 use bevy::ecs::{bundle::Bundle, component::Component};
 
-use crate::game::geometry::Vec3;
+use crate::game::geometry::{Vec2, Vec3};
 
 use super::{EntityBundle, GameEntity, MapEntity};
 
@@ -14,7 +14,8 @@ pub struct MineralPatchBundle {
 }
 
 impl GameEntity for MineralPatch {
-    const SIZE: Vec3 = Vec3::new_3d(2.0, 1.0, 2.0);
+    const FOOTPRINT: Vec2 = Vec2::new(2.0, 1.0);
+    const SIZE: Vec3 = Self::FOOTPRINT.with_z(2.0);
     const NAME: &'static str = "Minerals";
 }
 
@@ -30,7 +31,8 @@ pub struct VespeneGeyserBundle {
 }
 
 impl GameEntity for VespeneGeyser {
-    const SIZE: Vec3 = Vec3::new_3d(3.0, 3.0, 1.0);
+    const FOOTPRINT: Vec2 = Vec2::new(3.0, 3.0);
+    const SIZE: Vec3 = Self::FOOTPRINT.with_z(1.0);
     const NAME: &'static str = "Vespene";
 }
 

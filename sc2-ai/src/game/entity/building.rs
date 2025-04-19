@@ -1,6 +1,6 @@
 use bevy::ecs::{bundle::Bundle, component::Component};
 
-use crate::game::geometry::Vec3;
+use crate::game::geometry::{Vec2, Vec3};
 
 use super::{EntityBundle, GameEntity};
 
@@ -14,7 +14,8 @@ pub struct HatcheryBundle {
 }
 
 impl GameEntity for Hatchery {
-    const SIZE: Vec3 = Vec3::new_3d(5.0, 5.0, 2.0);
+    const FOOTPRINT: Vec2 = Vec2::new(5.0, 5.0);
+    const SIZE: Vec3 = Self::FOOTPRINT.with_z(2.0);
     const NAME: &'static str = "Hatchery";
 }
 

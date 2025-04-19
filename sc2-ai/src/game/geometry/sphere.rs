@@ -1,6 +1,6 @@
 use bevy::ecs::component::Component;
 
-use super::point::Vec3;
+use super::vec3::Vec3;
 
 #[derive(Component, Default, Clone, Copy, Debug, PartialEq)]
 pub struct Sphere {

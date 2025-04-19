@@ -14,7 +14,7 @@ pub struct WorkerBundle {
 }
 
 impl Worker {
-    pub const SIZE: Vec3 = Vec3::new_3d(1.0, 1.0, 1.0);
+    pub const SIZE: Vec3 = Vec3::new(1.0, 1.0, 1.0);
 }
 
 #[derive(Component, Default, Clone, Copy, Debug, Hash, PartialEq, Eq)]

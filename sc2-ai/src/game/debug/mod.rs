@@ -1,3 +1,9 @@
+mod color;
+mod cuboid;
 mod draw;
+mod line;
+mod sphere;
+mod text;
 
-pub use draw::{Color, DrawCommandsExt};
+pub use color::Color;
+pub use draw::DrawCommandsExt;
