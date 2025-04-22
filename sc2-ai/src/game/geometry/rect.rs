@@ -7,22 +7,35 @@ pub struct Rect(Vec2, Vec2);
 
 impl Rect {
     pub const fn from_corners(p0: Vec2, p1: Vec2) -> Self {
-        let min = Vec2::new(p0.0.x.min(p1.0.x), p0.0.y.min(p1.0.y));
-        let max = Vec2::new(p0.0.x.max(p1.0.x), p0.0.y.max(p1.0.y));
+        let min = Vec2::new(p0.x.min(p1.x), p0.y.min(p1.y));
+        let max = Vec2::new(p0.x.max(p1.x), p0.y.max(p1.y));
         Self(min, max)
     }
 
     pub const fn from_center(centre: Vec2, size: Vec2) -> Self {
-        debug_assert!(size.0.x >= 0.0);
-        debug_assert!(size.0.y >= 0.0);
+        debug_assert!(size.x >= 0.0);
+        debug_assert!(size.y >= 0.0);
 
-        let size_x = size.0.x / 2.0;
-        let size_y = size.0.y / 2.0;
+        let size_x = size.x / 2.0;
+        let size_y = size.y / 2.0;
 
-        let min = Vec2::new(centre.0.x - size_x, centre.0.y - size_y);
-        let max = Vec2::new(centre.0.x + size_x, centre.0.y + size_y);
+        let min = Vec2::new(centre.x - size_x, centre.y - size_y);
+        let max = Vec2::new(centre.x + size_x, centre.y + size_y);
 
         Self(min, max)
+    }
+
+    /// Return the smallest [`Rect`] which contains a given set of points.
+    ///
+    /// Returns [`None`] if points is empty.
+    pub fn bounding_points(mut points: impl Iterator<Item = Vec2>) -> Option<Self> {
+        let first = points.next()?;
+
+        let (min, max) = points.fold((first, first), |(prev_min, prev_max), point| {
+            (point.min(prev_min), point.max(prev_max))
+        });
+
+        Some(Self(min, max))
     }
 
     pub const fn min(&self) -> Vec2 {
@@ -37,17 +50,21 @@ impl Rect {
         let min = self.0;
         let max = self.1;
 
-        let x = (min.0.x + max.0.x) / 2.0;
-        let y = (min.0.y + max.0.y) / 2.0;
+        let x = (min.x + max.x) / 2.0;
+        let y = (min.y + max.y) / 2.0;
 
         Vec2::new(x, y)
     }
 
+    pub fn size(self) -> Vec2 {
+        self.1 - self.0
+    }
+
     pub const fn overlaps(&self, other: &Self) -> bool {
-        (self.max().0.x > other.min().0.x)
-            && (self.min().0.x < other.max().0.x)
-            && (self.max().0.y > other.min().0.y)
-            && (self.min().0.y < other.max().0.y)
+        (self.max().x > other.min().x)
+            && (self.min().x < other.max().x)
+            && (self.max().y > other.min().y)
+            && (self.min().y < other.max().y)
     }
 
     pub fn min_distance(&self, other: &Self) -> f32 {

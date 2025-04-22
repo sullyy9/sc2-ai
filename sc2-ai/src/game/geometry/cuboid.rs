@@ -7,51 +7,52 @@ pub struct Cuboid(Vec3, Vec3);
 
 impl Cuboid {
     pub const fn from_corners(p0: Vec3, p1: Vec3) -> Self {
-        let min = Vec3::new(p0.0.x.min(p1.0.x), p0.0.y.min(p1.0.y), p0.0.z.min(p1.0.z));
-        let max = Vec3::new(p0.0.x.max(p1.0.x), p0.0.y.max(p1.0.y), p0.0.z.max(p1.0.z));
+        let min = Vec3::new(p0.x.min(p1.x), p0.y.min(p1.y), p0.z.min(p1.z));
+        let max = Vec3::new(p0.x.max(p1.x), p0.y.max(p1.y), p0.z.max(p1.z));
         Self(min, max)
     }
 
     pub const fn from_center(centre: Vec3, size: Vec3) -> Self {
-        debug_assert!(size.0.x >= 0.0);
-        debug_assert!(size.0.y >= 0.0);
-        debug_assert!(size.0.z >= 0.0);
+        debug_assert!(size.x >= 0.0);
+        debug_assert!(size.y >= 0.0);
+        debug_assert!(size.z >= 0.0);
 
-        let size_x = size.0.x / 2.0;
-        let size_y = size.0.y / 2.0;
-        let size_z = size.0.z / 2.0;
+        let size_x = size.x / 2.0;
+        let size_y = size.y / 2.0;
+        let size_z = size.z / 2.0;
 
-        let min = Vec3::new(
-            centre.0.x - size_x,
-            centre.0.y - size_y,
-            centre.0.z - size_z,
-        );
-        let max = Vec3::new(
-            centre.0.x + size_x,
-            centre.0.y + size_y,
-            centre.0.z + size_z,
-        );
+        let min = Vec3::new(centre.x - size_x, centre.y - size_y, centre.z - size_z);
+        let max = Vec3::new(centre.x + size_x, centre.y + size_y, centre.z + size_z);
 
         Self(min, max)
     }
 
     /// Create a new cuboid from the centre of its bottom face and a size.
     pub const fn from_base_center(centre: Vec3, size: Vec3) -> Self {
-        debug_assert!(size.0.x >= 0.0);
-        debug_assert!(size.0.y >= 0.0);
-        debug_assert!(size.0.z >= 0.0);
+        debug_assert!(size.x >= 0.0);
+        debug_assert!(size.y >= 0.0);
+        debug_assert!(size.z >= 0.0);
 
-        let size_x = size.0.x / 2.0;
-        let size_y = size.0.y / 2.0;
+        let size_x = size.x / 2.0;
+        let size_y = size.y / 2.0;
 
-        let min = Vec3::new(centre.0.x - size_x, centre.0.y - size_y, centre.0.z);
-        let max = Vec3::new(
-            centre.0.x + size_x,
-            centre.0.y + size_y,
-            centre.0.z + size.0.z,
-        );
+        let min = Vec3::new(centre.x - size_x, centre.y - size_y, centre.z);
+        let max = Vec3::new(centre.x + size_x, centre.y + size_y, centre.z + size.z);
 
         Self(min, max)
+    }
+
+    /// Return the smallest [`Cuboid`] which contains a given set of points.
+    ///
+    /// Returns [`None`] if points is empty.
+    pub fn bounding_points(mut points: impl Iterator<Item = Vec3>) -> Option<Self> {
+        let first = points.next()?;
+
+        let (min, max) = points.fold((first, first), |(prev_min, prev_max), point| {
+            (point.min(prev_min), point.max(prev_max))
+        });
+
+        Some(Self(min, max))
     }
 
     pub const fn min(&self) -> &Vec3 {
@@ -66,9 +67,9 @@ impl Cuboid {
         let min = self.0;
         let max = self.1;
 
-        let x = (min.0.x + max.0.x) / 2.0;
-        let y = (min.0.y + max.0.y) / 2.0;
-        let z = (min.0.z + max.0.z) / 2.0;
+        let x = (min.x + max.x) / 2.0;
+        let y = (min.y + max.y) / 2.0;
+        let z = (min.z + max.z) / 2.0;
 
         Vec3::new(x, y, z)
     }
