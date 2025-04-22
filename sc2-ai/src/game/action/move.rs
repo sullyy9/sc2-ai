@@ -1,11 +1,11 @@
 use bevy::ecs::{entity::Entity, event::Event, world::Command};
 use num_traits::ToPrimitive;
 
-use rust_sc2::ids::AbilityId;
+use sc2_proto::AbilityId;
 
 use crate::core::Actions;
 
-use super::{entity::GameId, geometry::Vec2};
+use crate::game::{entity::GameId, geometry::Vec2};
 
 struct MoveCommand {
     units: Box<[Entity]>,
@@ -55,7 +55,7 @@ impl Command for MoveCommand {
     }
 }
 
-pub trait ActionCommandsExt {
+pub trait MoveCommandsExt {
     /// Request that a collection of units move to a location.
     ///
     /// Dispatches a [`MoveEvent`].
@@ -69,7 +69,7 @@ pub trait ActionCommandsExt {
     }
 }
 
-impl ActionCommandsExt for bevy::ecs::system::Commands<'_, '_> {
+impl MoveCommandsExt for bevy::ecs::system::Commands<'_, '_> {
     fn move_units(&mut self, units: &[Entity], destination: Vec2) {
         let units: Box<[_]> = Box::from(units);
 

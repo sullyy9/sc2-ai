@@ -86,7 +86,9 @@ pub trait MapEntity: GameEntity {
 }
 
 pub trait UnitEntity: GameEntity {}
-pub trait BuildingEntity: GameEntity {}
+pub trait BuildingEntity: GameEntity {
+    const BUILD_ID: sc2_proto::ability::AbilityId;
+}
 
 #[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct EntityFound<T: GameEntity> {
