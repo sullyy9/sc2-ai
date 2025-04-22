@@ -3,7 +3,7 @@ use bevy::ecs::world::Command;
 use crate::{
     core::DebugCommands,
     game::{
-        geometry::{Cuboid, Line2, Line3, Rect, Sphere, Vec3},
+        geometry::{Cuboid, Line2, Line3, Rect, Sphere, Vec2, Vec3},
         map::HeightMap,
     },
 };
@@ -13,7 +13,7 @@ use super::{
     cuboid::{DrawBox, DrawSurfaceBox, DrawSurfaceRect},
     line::{DrawLine, DrawSurfaceLine},
     sphere::DrawSphere,
-    text::DrawText,
+    text::{DrawSurfaceText, DrawText},
 };
 
 /// The height given by the heightmap will cause drawing to clip or be just inside the terrain. A
@@ -27,6 +27,7 @@ enum Draw {
     Box(DrawBox),
     Sphere(DrawSphere),
 
+    SurfaceText(DrawSurfaceText),
     SurfaceLine(DrawSurfaceLine),
     SurfaceRect(DrawSurfaceRect),
     SurfaceBox(DrawSurfaceBox),
@@ -44,6 +45,7 @@ impl Command for Draw {
                 Draw::Box(_) => self,
                 Draw::Sphere(_) => self,
 
+                Draw::SurfaceText(text) => Draw::Text(text.map_to_surface(height_map)),
                 Draw::SurfaceLine(line) => Draw::Line(line.map_to_surface(height_map)),
                 Draw::SurfaceRect(rect) => Draw::Box(rect.map_to_surface(height_map)),
                 Draw::SurfaceBox(boxx) => Draw::Box(boxx.map_to_surface(height_map)),
@@ -65,7 +67,10 @@ impl Command for Draw {
             Draw::Box(boxx) => draw_cmd.boxes.push(boxx.into()),
             Draw::Sphere(sphere) => draw_cmd.spheres.push(sphere.into()),
 
-            Draw::SurfaceLine(_) | Draw::SurfaceRect(_) | Draw::SurfaceBox(_) => unreachable!(),
+            Draw::SurfaceText(_)
+            | Draw::SurfaceLine(_)
+            | Draw::SurfaceRect(_)
+            | Draw::SurfaceBox(_) => unreachable!(),
         }
     }
 }
@@ -77,6 +82,7 @@ pub trait DrawCommandsExt {
     fn draw_box(&mut self, rect: Cuboid, color: Color);
     fn draw_sphere(&mut self, sphere: Sphere, color: Color);
 
+    fn draw_surface_text(&mut self, text: impl Into<String>, position: Vec2, color: Color);
     fn draw_surface_line(&mut self, line: Line2, color: Color);
     fn draw_surface_rect(&mut self, rect: Rect, color: Color);
     fn draw_surface_box(&mut self, base: Rect, height: f32, color: Color);
@@ -98,6 +104,12 @@ impl DrawCommandsExt for bevy::ecs::system::Commands<'_, '_> {
     }
     fn draw_sphere(&mut self, sphere: Sphere, color: Color) {
         self.queue(Draw::Sphere(DrawSphere::new(sphere).with_color(color)));
+    }
+
+    fn draw_surface_text(&mut self, text: impl Into<String>, position: Vec2, color: Color) {
+        self.queue(Draw::SurfaceText(
+            DrawSurfaceText::new(text.into(), position).with_color(color),
+        ));
     }
 
     fn draw_surface_line(&mut self, line: Line2, color: Color) {

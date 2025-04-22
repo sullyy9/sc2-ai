@@ -1,8 +1,8 @@
 use protobuf::MessageField;
 
-use crate::game::geometry::Vec3;
+use crate::game::geometry::{Vec2, Vec3};
 
-use super::color::Color;
+use super::{color::Color, draw::SURFACE_Z_OFFSET};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DrawText {
@@ -65,6 +65,48 @@ impl From<sc2_proto::debug::DebugText> for DrawText {
             position: (*position).into(),
             color: color.map(|c| (*c).into()).unwrap_or_default(),
             size: size.unwrap_or(Self::DEFAULT_TEXT_SIZE),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct DrawSurfaceText {
+    text: String,
+    position: Vec2,
+    color: Color,
+    size: u32,
+}
+
+impl DrawSurfaceText {
+    pub const DEFAULT_TEXT_SIZE: u32 = DrawText::DEFAULT_TEXT_SIZE;
+
+    pub fn new(text: String, position: Vec2) -> Self {
+        Self {
+            text,
+            position,
+            color: Color::default(),
+            size: Self::DEFAULT_TEXT_SIZE,
+        }
+    }
+
+    pub const fn with_color(mut self, color: Color) -> Self {
+        self.color = color;
+        self
+    }
+
+    pub const fn with_size(mut self, size: u32) -> Self {
+        self.size = size;
+        self
+    }
+
+    pub fn map_to_surface(self, map: impl std::ops::Index<Vec2, Output = f32>) -> DrawText {
+        let z_height = *map.index(self.position) + SURFACE_Z_OFFSET;
+
+        DrawText {
+            text: self.text,
+            position: self.position.with_z(z_height),
+            color: self.color,
+            size: self.size,
         }
     }
 }
