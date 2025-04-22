@@ -1,3 +1,5 @@
+use std::net::Ipv4Addr;
+
 use bevy::{
     app::{App, Update},
     ecs::{
@@ -9,13 +11,14 @@ use bevy::{
     },
 };
 use clap::Parser;
-use core::{CorePlugin, StartupMode};
-use std::net::Ipv4Addr;
 use tracing::{info, warn};
 
+mod ai;
 mod core;
 mod game;
 
+use ai::AiPluginGroup;
+use core::{CorePlugin, StartupMode};
 use game::{
     GamePlugin,
     action::{ActionCommandsExt, MoveEvent},
@@ -74,7 +77,9 @@ fn main() -> Result<(), anyhow::Error> {
 
     let mut app = App::new();
 
-    app.add_plugins(core).add_plugins(GamePlugin);
+    app.add_plugins(core)
+        .add_plugins(GamePlugin)
+        .add_plugins(AiPluginGroup);
 
     app.add_systems(
         Update,
