@@ -13,7 +13,6 @@ ndarray = "0.16.1"
 num-traits = "0.2.19"
 protobuf = { version = "3.7.2", features = ["bytes"] }
 regex = "1.11.1"
-rust-sc2 = "1.1.2"
 sc2-proto = { path = "../sc2-proto" }
 thiserror = "2.0.12"
 tracing = "0.1.41"
