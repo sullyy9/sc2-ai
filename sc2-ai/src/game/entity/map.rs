@@ -7,6 +7,9 @@ use super::{EntityBundle, GameEntity, MapEntity};
 #[derive(Component, Default, Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub struct MineralPatch;
 
+#[derive(Component, Default, Clone, Copy, Debug, Hash, PartialEq, Eq)]
+pub struct RichMinerals;
+
 #[derive(Bundle, Default, Clone, Copy, Debug, PartialEq)]
 pub struct MineralPatchBundle {
     pub tag: MineralPatch,

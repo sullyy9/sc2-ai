@@ -12,7 +12,7 @@ use entity::{
     EntityBundle, EntityFound, EntityIdMap, GameId,
     building::{HatcheryBundle, LarvaBundle},
     map::{
-        DestructibleRockBundle, MineralPatch, MineralPatchBundle, VespeneGeyser,
+        DestructibleRockBundle, MineralPatch, MineralPatchBundle, RichMinerals, VespeneGeyser,
         VespeneGeyserBundle,
     },
     unit::{OverlordBundle, WorkerBundle},
@@ -81,13 +81,35 @@ fn create_entities(
         let unit_type = TypeId::from_u32(unit.unit_type()).unwrap();
 
         let entity = match unit_type {
-            TypeId::MineralField | TypeId::MineralField450 | TypeId::MineralField750 => {
+            TypeId::MineralField
+            | TypeId::MineralField450
+            | TypeId::MineralField750
+            | TypeId::LabMineralField
+            | TypeId::LabMineralField750
+            | TypeId::PurifierMineralField
+            | TypeId::PurifierMineralField750
+            | TypeId::BattleStationMineralField
+            | TypeId::BattleStationMineralField750 => {
                 let entity = MineralPatchBundle {
                     unit: EntityBundle::from(unit.clone()),
                     ..Default::default()
                 };
 
                 let entity = commands.spawn(entity).id();
+                commands.send_event(EntityFound::<MineralPatch>::from(entity));
+                entity
+            }
+
+            TypeId::PurifierRichMineralField
+            | TypeId::PurifierRichMineralField750
+            | TypeId::RichMineralField
+            | TypeId::RichMineralField750 => {
+                let entity = MineralPatchBundle {
+                    unit: EntityBundle::from(unit.clone()),
+                    ..Default::default()
+                };
+
+                let entity = commands.spawn((entity, RichMinerals)).id();
                 commands.send_event(EntityFound::<MineralPatch>::from(entity));
                 entity
             }
